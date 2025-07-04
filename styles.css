@@ -88,6 +88,12 @@
     background-color: rgba(6, 95, 212, 0.1);
 }
 
+.collapse-button svg {
+    color: #fff;
+    fill: #fff;
+    transition: color 0.2s, fill 0.2s, transform 0.2s;
+}
+
 .yt-extension-sidebar.collapsed {
     height: 48px !important;
     padding: 0; 
@@ -239,4 +245,267 @@
 
 .yt-extension-sidebar.dark-mode .chat-messages > div > strong:first-child {
     color: #ffffff !important; 
+}
+
+.user-bubble {
+  background: linear-gradient(90deg, #065fd4 0%, #0b8fff 100%);
+  color: #fff;
+  align-self: flex-end;
+  border-radius: 18px 18px 4px 18px;
+  margin: 8px 0 8px 40px;
+  padding: 12px 18px;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(6,95,212,0.08);
+  max-width: 80%;
+  word-break: break-word;
+  font-weight: 500;
+}
+.ai-bubble {
+  background: #fff;
+  color: #222;
+  align-self: flex-start;
+  border-radius: 18px 18px 18px 4px;
+  margin: 8px 40px 8px 0;
+  padding: 12px 18px;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  max-width: 80%;
+  word-break: break-word;
+  font-weight: 500;
+  position: relative;
+}
+.welcome-bubble {
+  background: #f1f3f4;
+  color: #555;
+  font-style: italic;
+  font-weight: 400;
+  box-shadow: none;
+}
+.premium-header {
+  background: linear-gradient(90deg, #ff0000 0%, #282828 100%);
+  color: #fff;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  border-bottom: none;
+  flex-shrink: 0;
+}
+.sage-logo {
+  margin-right: 10px;
+  vertical-align: middle;
+}
+.premium-input-container {
+  background: #f9f9f9;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 -1px 4px rgba(0,0,0,0.04);
+  padding: 12px 8px 8px 8px;
+  display: flex;
+  align-items: center;
+}
+.premium-input {
+  background: #fff;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 20px;
+  font-size: 16px;
+  padding: 10px 16px;
+  margin-right: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  transition: border 0.2s;
+}
+.premium-input:focus {
+  border: 1.5px solid #065fd4;
+}
+.premium-send-button {
+  background: linear-gradient(90deg, #065fd4 0%, #0b8fff 100%);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(6,95,212,0.08);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.premium-send-button:hover {
+  background: linear-gradient(90deg, #0b8fff 0%, #065fd4 100%);
+}
+.thinking-bubble {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fffbe6;
+  color: #bfa700;
+  font-style: italic;
+  position: relative;
+  overflow: hidden;
+}
+.thinking-glow {
+  display: inline-block;
+  width: 60px;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ffe066 0%, #fffbe6 50%, #ffe066 100%) !important;
+  background-size: 200% 100% !important;
+  background-position: 0% 50% !important;
+  animation: glow-move 1.2s linear infinite !important;
+  margin-right: 8px;
+  border: 1px solid #ffe066;
+  box-shadow: 0 0 8px 2px #ffe06644;
+}
+@keyframes glow-move {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+.thinking-text {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+.error-bubble {
+  background: #fde8e8;
+  color: #d32f2f;
+  font-weight: 500;
+}
+.yt-extension-sidebar.dark-mode .ai-bubble {
+  background: #232323;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+.yt-extension-sidebar.dark-mode .user-bubble {
+  background: linear-gradient(90deg, #065fd4 0%, #0b8fff 100%);
+  color: #fff;
+}
+.yt-extension-sidebar.dark-mode .welcome-bubble {
+  background: #181818;
+  color: #aaa;
+}
+.yt-extension-sidebar.dark-mode .premium-header {
+  background: linear-gradient(90deg, #ff0000 0%, #181818 100%);
+  color: #fff;
+}
+.yt-extension-sidebar.dark-mode .premium-input-container {
+  background: #181818;
+}
+.yt-extension-sidebar.dark-mode .premium-input {
+  background: #232323;
+  color: #fff;
+  border: 1.5px solid #333;
+}
+.yt-extension-sidebar.dark-mode .premium-input:focus {
+  border: 1.5px solid #3ea6ff;
+}
+.yt-extension-sidebar.dark-mode .premium-send-button {
+  background: linear-gradient(90deg, #3ea6ff 0%, #065fd4 100%);
+  color: #fff;
+}
+.yt-extension-sidebar.dark-mode .premium-send-button:hover {
+  background: linear-gradient(90deg, #065fd4 0%, #3ea6ff 100%);
+}
+.yt-extension-sidebar.dark-mode .thinking-bubble {
+  background: #232323;
+  color: #ffe066;
+}
+.yt-extension-sidebar.dark-mode .thinking-glow {
+  background: linear-gradient(90deg, #ffe066 0%, #232323 50%, #ffe066 100%);
+}
+.yt-extension-sidebar.dark-mode .error-bubble {
+  background: #331111;
+  color: #ff4444;
+}
+
+.yt-extension-sidebar.collapsed .premium-header {
+  align-items: center;
+  height: 100% !important;
+  min-height: 48px;
+  padding: 0;
+  justify-content: space-between;
+  padding-left: 10px;
+}
+.yt-extension-sidebar.collapsed .extension-title {
+  display: none;
+}
+.yt-extension-sidebar.collapsed .sage-logo {
+  margin-right: 0;
+}
+.yt-extension-sidebar.collapsed .collapse-button {
+  position: static;
+  margin-left: 12px;
+  transform: none;
+}
+.yt-extension-sidebar.collapsed .collapse-button svg {
+  transform: rotate(180deg);
+}
+
+.summarize-button {
+  background: linear-gradient(90deg, #ff9800 0%, #ffc107 100%);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.12);
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.summarize-button:hover, .summarize-button:focus {
+  background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%);
+  box-shadow: 0 4px 16px rgba(255, 193, 7, 0.18);
+  outline: none;
+}
+.yt-extension-sidebar.dark-mode .summarize-button {
+  background: linear-gradient(90deg, #ffb300 0%, #ff9800 100%);
+  color: #232323;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.18);
+}
+.yt-extension-sidebar.dark-mode .summarize-button:hover, .yt-extension-sidebar.dark-mode .summarize-button:focus {
+  background: linear-gradient(90deg, #ff9800 0%, #ffb300 100%);
+  box-shadow: 0 4px 16px rgba(255, 193, 7, 0.28);
+  outline: none;
+}
+
+.summarize-float-button {
+  display: block;
+  margin: 18px auto 8px auto;
+  padding: 10px 28px;
+  background: linear-gradient(90deg, #222 0%, #444 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 24px;
+  box-shadow: 0 2px 8px rgba(34, 34, 34, 0.12);
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, opacity 0.2s;
+  z-index: 2;
+  position: relative;
+}
+.summarize-float-button:hover, .summarize-float-button:focus {
+  background: linear-gradient(90deg, #444 0%, #666 100%);
+  box-shadow: 0 4px 16px rgba(34, 34, 34, 0.18);
+  outline: none;
+}
+.summarize-float-button.disabled,
+.summarize-float-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.yt-extension-sidebar.dark-mode .summarize-float-button {
+  background: linear-gradient(90deg, #333 0%, #555 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(34, 34, 34, 0.18);
+}
+.yt-extension-sidebar.dark-mode .summarize-float-button:hover, .yt-extension-sidebar.dark-mode .summarize-float-button:focus {
+  background: linear-gradient(90deg, #555 0%, #777 100%);
+  box-shadow: 0 4px 16px rgba(34, 34, 34, 0.28);
+  outline: none;
 }

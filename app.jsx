@@ -116,28 +116,38 @@ class YouTubeChatAssistant {
 
     async updateTranscript() {
         await new Promise(resolve => setTimeout(resolve, 1500));
-
         const [transcriptResult, metadata] = await Promise.all([
             this.fetchTranscript(),
             this.getVideoMetadata()
         ]);
-
         if (transcriptResult && !transcriptResult.error) {
             this.transcript = transcriptResult.data;
         }
-        
         if (metadata) {
             this.metadata = metadata;
         }
-
         const messagesDiv = document.querySelector('#chatMessages');
         if (messagesDiv) {
             messagesDiv.innerHTML = '';
-            const welcomeMsg = document.createElement('p');
-            welcomeMsg.style.color = '#666';
-            welcomeMsg.style.fontSize = '16px';
+            const welcomeMsg = document.createElement('div');
+            welcomeMsg.className = 'ai-bubble welcome-bubble';
             welcomeMsg.textContent = 'Welcome! Ask me anything about this video...';
             messagesDiv.appendChild(welcomeMsg);
+            const summarizeBtn = document.createElement('button');
+            summarizeBtn.className = 'summarize-float-button';
+            summarizeBtn.id = 'summarizeFloatButton';
+            summarizeBtn.textContent = 'Summarize';
+            messagesDiv.appendChild(summarizeBtn);
+            summarizeBtn.addEventListener('click', () => {
+                if (!this.summarizeUsed) {
+                    this.summarizeUsed = true;
+                    summarizeBtn.disabled = true;
+                    summarizeBtn.classList.add('disabled');
+                    summarizeBtn.style.opacity = '0.5';
+                    summarizeBtn.style.display = 'none';
+                    this.sendMessageFromButton('summarize this video');
+                }
+            });
         }
     }
 
@@ -196,8 +206,9 @@ class YouTubeChatAssistant {
 
     createChatInterface() {
         const template = `
-            <div class="extension-header">
-                <h2 class="extension-title">Sage</h2>
+            <div class="extension-header premium-header">
+                <svg class="sage-logo" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="28" height="28" rx="8" fill="#FF0000"/><text x="14" y="19" text-anchor="middle" font-size="16" fill="#fff" font-family="Arial, sans-serif">S</text></svg>
+                <span class="extension-title">Sage</span>
                 <button class="collapse-button" title="Collapse/Expand">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
@@ -205,11 +216,13 @@ class YouTubeChatAssistant {
                 </button>
             </div>
             <div class="chat-messages" id="chatMessages">
-                <p style="color: #666; font-size: 16px;">Welcome! Ask me anything about this video...</p>
+                <div class="ai-bubble welcome-bubble">Welcome! Ask me anything about this video...</div>
             </div>
-            <div class="chat-input-container">
-                <input type="text" class="chat-input" placeholder="Type your message..." id="chatInput">
-                <button class="send-button">Send</button>
+            <div class="chat-input-container premium-input-container">
+                <input type="text" class="chat-input premium-input" placeholder="Type your message..." id="chatInput">
+                <button class="send-button premium-send-button" aria-label="Send">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/></svg>
+                </button>
             </div>
         `;
         const extensionDiv = document.createElement('div');
@@ -225,31 +238,25 @@ class YouTubeChatAssistant {
         const input = container.querySelector('#chatInput');
         const sendButton = container.querySelector('.send-button');
         const messagesDiv = container.querySelector('#chatMessages');
-
-        const sendMessage = async () => {
-            const message = input.value.trim();
+        this.summarizeUsed = false;
+        const sendMessage = async (customMessage) => {
+            const message = customMessage || input.value.trim();
             if (message) {
-                // Display user message
                 const userMessageElement = document.createElement('div');
-                userMessageElement.style.marginBottom = '12px';
-                userMessageElement.style.fontSize = '16px';
-                userMessageElement.innerHTML = `<strong>You:</strong> ${message}`;
+                userMessageElement.className = 'user-bubble chat-bubble';
+                userMessageElement.textContent = message;
                 messagesDiv.appendChild(userMessageElement);
-                input.value = '';
-
-                // Show loading indicator
+                if (!customMessage) input.value = '';
                 const loadingElement = document.createElement('div');
-                loadingElement.innerHTML = '<strong>Sage:</strong> Thinking...';
+                loadingElement.className = 'ai-bubble chat-bubble thinking-bubble';
+                loadingElement.innerHTML = '<span class="thinking-glow"></span><span class="thinking-text">Thinking...</span>';
                 messagesDiv.appendChild(loadingElement);
-
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 try {
-                    // Get current video context
                     const videoData = {
                         transcript: this.transcript?.data || '',
                         metadata: await this.getVideoMetadata()
                     };
-
-                    // Call the deployed API endpoint
                     const response = await fetch('https://sage-of93.vercel.app/api', {
                         method: 'POST',
                         headers: {
@@ -260,58 +267,40 @@ class YouTubeChatAssistant {
                             videoData: videoData
                         })
                     });
-
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.details || response.statusText);
                     }
-
                     const data = await response.json();
-                    
-                    // Remove loading indicator
                     messagesDiv.removeChild(loadingElement);
-                    
-                    // Display AI response
                     const aiMessageElement = document.createElement('div');
-                    aiMessageElement.style.marginBottom = '12px';
-                    aiMessageElement.style.fontSize = '16px';
-                    aiMessageElement.innerHTML = `<strong>Sage:</strong> ${data.answer}`;
+                    aiMessageElement.className = 'ai-bubble chat-bubble';
+                    aiMessageElement.textContent = data.answer;
                     messagesDiv.appendChild(aiMessageElement);
-                    
-                    // Scroll to bottom
                     messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 } catch (error) {
                     console.error('Error:', error);
-                    // Remove loading indicator
                     messagesDiv.removeChild(loadingElement);
-                    
-                    // Display error message
                     const errorElement = document.createElement('div');
-                    errorElement.style.marginBottom = '12px';
-                    errorElement.style.fontSize = '16px';
-                    errorElement.style.color = '#ff0000';
-                    errorElement.innerHTML = `<strong>Sage:</strong> Server error, please try again later`;
+                    errorElement.className = 'ai-bubble chat-bubble error-bubble';
+                    errorElement.textContent = 'Server error, please try again later';
                     messagesDiv.appendChild(errorElement);
                 }
             }
         };
-
-        sendButton.addEventListener('click', sendMessage);
+        sendButton.addEventListener('click', () => sendMessage());
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
             }
         });
-
         const collapseButton = container.querySelector('.collapse-button');
         collapseButton.addEventListener('click', () => {
             container.classList.toggle('collapsed');
             collapseButton.classList.toggle('collapsed');
-            
             const isCollapsed = container.classList.contains('collapsed');
             localStorage.setItem('ytChatCollapsed', isCollapsed);
         });
-
         const wasCollapsed = localStorage.getItem('ytChatCollapsed') === 'true';
         if (wasCollapsed) {
             container.classList.add('collapsed');
@@ -322,6 +311,9 @@ class YouTubeChatAssistant {
     insertInSidebar() {
         const sidebar = document.querySelector('#secondary.style-scope.ytd-watch-flexy');
         if (sidebar) {
+            // Remove any existing extension sidebar to prevent duplicates
+            const existing = sidebar.querySelector('.yt-extension-sidebar');
+            if (existing) existing.remove();
             const chatInterface = this.createChatInterface();
             sidebar.insertBefore(chatInterface, sidebar.firstChild);
             this.setupEventListeners(chatInterface);
@@ -428,6 +420,57 @@ class YouTubeChatAssistant {
                 tags: ['Error fetching tags']
             };
         }
+    }
+
+    sendMessageFromButton(message) {
+        const input = document.querySelector('#chatInput');
+        const messagesDiv = document.querySelector('#chatMessages');
+        if (!messagesDiv) return;
+        const userMessageElement = document.createElement('div');
+        userMessageElement.className = 'user-bubble chat-bubble';
+        userMessageElement.textContent = message;
+        messagesDiv.appendChild(userMessageElement);
+        const loadingElement = document.createElement('div');
+        loadingElement.className = 'ai-bubble chat-bubble thinking-bubble';
+        loadingElement.innerHTML = '<span class="thinking-glow"></span><span class="thinking-text">Thinking...</span>';
+        messagesDiv.appendChild(loadingElement);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        (async () => {
+            try {
+                const videoData = {
+                    transcript: this.transcript?.data || '',
+                    metadata: await this.getVideoMetadata()
+                };
+                const response = await fetch('https://sage-of93.vercel.app/api', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: message,
+                        videoData: videoData
+                    })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.details || response.statusText);
+                }
+                const data = await response.json();
+                messagesDiv.removeChild(loadingElement);
+                const aiMessageElement = document.createElement('div');
+                aiMessageElement.className = 'ai-bubble chat-bubble';
+                aiMessageElement.textContent = data.answer;
+                messagesDiv.appendChild(aiMessageElement);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } catch (error) {
+                console.error('Error:', error);
+                messagesDiv.removeChild(loadingElement);
+                const errorElement = document.createElement('div');
+                errorElement.className = 'ai-bubble chat-bubble error-bubble';
+                errorElement.textContent = 'Server error, please try again later';
+                messagesDiv.appendChild(errorElement);
+            }
+        })();
     }
 }
 
