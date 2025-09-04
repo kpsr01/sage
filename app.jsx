@@ -82,6 +82,7 @@ class YouTubeChatAssistant {
         this.metadata = null;
         this.lastUpdate = Date.now();
         this.throttleDelay = 500;
+        this.isLoading = false;
         this.init();
         this.setupUrlChangeListener();
         this.setupThemeObserver();
@@ -89,6 +90,7 @@ class YouTubeChatAssistant {
 
     init() {
         if (this.site.includes('youtube.com')) {
+            this.isLoading = true;
             this.setupObserver();
             const sidebar = document.querySelector('#secondary.style-scope.ytd-watch-flexy');
             if (sidebar) {
@@ -115,24 +117,70 @@ class YouTubeChatAssistant {
     }
 
     async updateTranscript() {
+        this.isLoading = true;
+        this.updateUIForLoadingState();
+        
         await new Promise(resolve => setTimeout(resolve, 1500));
         const [transcriptResult, metadata] = await Promise.all([
             this.fetchTranscript(),
             this.getVideoMetadata()
         ]);
+        
         if (transcriptResult && !transcriptResult.error) {
-            this.transcript = transcriptResult.data;
+            this.transcript = transcriptResult;
+            console.log('Transcript loaded:', {
+                language: transcriptResult.language,
+                isGenerated: transcriptResult.isGenerated,
+                entries: transcriptResult.totalEntries
+            });
+        } else if (transcriptResult?.error) {
+            console.warn('Transcript error:', transcriptResult.error);
+            this.transcript = { error: transcriptResult.error };
         }
+        
         if (metadata) {
             this.metadata = metadata;
         }
+        
+        this.isLoading = false;
+        this.updateUIForReadyState();
+    }
+
+    updateUIForLoadingState() {
         const messagesDiv = document.querySelector('#chatMessages');
+        const chatInput = document.querySelector('#chatInput');
+        const sendButton = document.querySelector('.send-button');
+        
+        if (messagesDiv) {
+            messagesDiv.innerHTML = '';
+            const loadingMsg = document.createElement('div');
+            loadingMsg.className = 'ai-bubble welcome-bubble';
+            loadingMsg.textContent = 'Fetching video details...';
+            messagesDiv.appendChild(loadingMsg);
+        }
+        
+        if (chatInput) {
+            chatInput.disabled = true;
+            chatInput.placeholder = 'Loading video details...';
+        }
+        
+        if (sendButton) {
+            sendButton.disabled = true;
+        }
+    }
+
+    updateUIForReadyState() {
+        const messagesDiv = document.querySelector('#chatMessages');
+        const chatInput = document.querySelector('#chatInput');
+        const sendButton = document.querySelector('.send-button');
+        
         if (messagesDiv) {
             messagesDiv.innerHTML = '';
             const welcomeMsg = document.createElement('div');
             welcomeMsg.className = 'ai-bubble welcome-bubble';
             welcomeMsg.textContent = 'Welcome! Ask me anything about this video...';
             messagesDiv.appendChild(welcomeMsg);
+            
             const summarizeBtn = document.createElement('button');
             summarizeBtn.className = 'summarize-float-button';
             summarizeBtn.id = 'summarizeFloatButton';
@@ -149,6 +197,15 @@ class YouTubeChatAssistant {
                 }
             });
         }
+        
+        if (chatInput) {
+            chatInput.disabled = false;
+            chatInput.placeholder = 'Type your message...';
+        }
+        
+        if (sendButton) {
+            sendButton.disabled = false;
+        }
     }
 
     getVideoId() {
@@ -161,42 +218,29 @@ class YouTubeChatAssistant {
         if (!videoId) return null;
 
         try {
-            const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
-            const html = await response.text();
-            
-            const captionsMatch = html.match(/"captionTracks":\[(.*?)\]/);
-            if (!captionsMatch) {
-                return { error: 'No transcript available for this video. Please try another video.' };
+            const response = await fetch('https://sage-of93.vercel.app/api/transcript', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    videoId: videoId
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return { error: errorData.error || 'Failed to fetch transcript' };
             }
 
-            const captions = JSON.parse(`[${captionsMatch[1]}]`);
+            const data = await response.json();
             
-            let selectedCaptions = captions.find(caption => caption.languageCode === 'en');
-            
-            if (!selectedCaptions && captions.length > 0) {
-                selectedCaptions = captions[0];
-            }
-
-            if (!selectedCaptions?.baseUrl) {
-                return { error: 'No transcript available for this video.' };
-            }
-
-            const transcriptResponse = await fetch(selectedCaptions.baseUrl);
-            const transcriptText = await transcriptResponse.text();
-            
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(transcriptText, 'text/xml');
-            const textElements = doc.getElementsByTagName('text');
-            
-            const transcript = Array.from(textElements)
-                .map(text => text.textContent.trim())
-                .filter(text => text)
-                .join('\n');
-
             return { 
-                data: transcript,
-                language: selectedCaptions.languageCode,
-                isTranslated: selectedCaptions.kind === 'asr'
+                data: data.transcript,
+                structured: data.structured_transcript,
+                language: data.language_code,
+                isGenerated: data.is_generated,
+                totalEntries: data.total_entries
             };
         } catch (error) {
             console.error('Error fetching transcript:', error);
@@ -216,11 +260,11 @@ class YouTubeChatAssistant {
                 </button>
             </div>
             <div class="chat-messages" id="chatMessages">
-                <div class="ai-bubble welcome-bubble">Welcome! Ask me anything about this video...</div>
+                <div class="ai-bubble welcome-bubble">Fetching video details...</div>
             </div>
             <div class="chat-input-container premium-input-container">
-                <input type="text" class="chat-input premium-input" placeholder="Type your message..." id="chatInput">
-                <button class="send-button premium-send-button" aria-label="Send">
+                <input type="text" class="chat-input premium-input" placeholder="Loading video details..." id="chatInput" disabled>
+                <button class="send-button premium-send-button" aria-label="Send" disabled>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/></svg>
                 </button>
             </div>
@@ -255,8 +299,19 @@ class YouTubeChatAssistant {
                 try {
                     const videoData = {
                         transcript: this.transcript?.data || '',
-                        metadata: await this.getVideoMetadata()
+                        metadata: await this.getVideoMetadata(),
+                        transcriptInfo: {
+                            language: this.transcript?.language,
+                            isGenerated: this.transcript?.isGenerated,
+                            totalEntries: this.transcript?.totalEntries
+                        }
                     };
+                    
+                    // Check if we have transcript error
+                    if (this.transcript?.error) {
+                        videoData.transcriptError = this.transcript.error;
+                    }
+                    
                     const response = await fetch('https://sage-of93.vercel.app/api', {
                         method: 'POST',
                         headers: {
@@ -311,12 +366,15 @@ class YouTubeChatAssistant {
     insertInSidebar() {
         const sidebar = document.querySelector('#secondary.style-scope.ytd-watch-flexy');
         if (sidebar) {
-            // Remove any existing extension sidebar to prevent duplicates
             const existing = sidebar.querySelector('.yt-extension-sidebar');
             if (existing) existing.remove();
             const chatInterface = this.createChatInterface();
             sidebar.insertBefore(chatInterface, sidebar.firstChild);
             this.setupEventListeners(chatInterface);
+            
+            if (this.isLoading) {
+                this.updateUIForLoadingState();
+            }
         }
     }
 
@@ -439,8 +497,19 @@ class YouTubeChatAssistant {
             try {
                 const videoData = {
                     transcript: this.transcript?.data || '',
-                    metadata: await this.getVideoMetadata()
+                    metadata: await this.getVideoMetadata(),
+                    transcriptInfo: {
+                        language: this.transcript?.language,
+                        isGenerated: this.transcript?.isGenerated,
+                        totalEntries: this.transcript?.totalEntries
+                    }
                 };
+                
+                // Check if we have transcript error
+                if (this.transcript?.error) {
+                    videoData.transcriptError = this.transcript.error;
+                }
+                
                 const response = await fetch('https://sage-of93.vercel.app/api', {
                     method: 'POST',
                     headers: {
