@@ -117,6 +117,7 @@ class YouTubeChatAssistant {
     }
 
     async updateTranscript() {
+        console.log('🚀 Starting transcript update process...');
         this.isLoading = true;
         this.updateUIForLoadingState();
         
@@ -128,22 +129,34 @@ class YouTubeChatAssistant {
         
         if (transcriptResult && !transcriptResult.error) {
             this.transcript = transcriptResult;
-            console.log('Transcript loaded:', {
+            console.log('✅ Transcript successfully loaded and stored!');
+            console.log('📊 Final transcript data structure:', {
                 language: transcriptResult.language,
                 isGenerated: transcriptResult.isGenerated,
-                entries: transcriptResult.totalEntries
+                entries: transcriptResult.totalEntries,
+                dataLength: transcriptResult.data?.length || 0,
+                hasStructured: !!transcriptResult.structured
             });
         } else if (transcriptResult?.error) {
-            console.warn('Transcript error:', transcriptResult.error);
+            console.warn('⚠️ Transcript error occurred:', transcriptResult.error);
             this.transcript = { error: transcriptResult.error };
+        } else {
+            console.error('❌ No transcript result returned');
+            this.transcript = { error: 'Unknown transcript error' };
         }
         
         if (metadata) {
             this.metadata = metadata;
+            console.log('✅ Video metadata loaded:', {
+                title: metadata.title?.substring(0, 50) + '...',
+                channel: metadata.channel,
+                hasDescription: !!metadata.description
+            });
         }
         
         this.isLoading = false;
         this.updateUIForReadyState();
+        console.log('🏁 Transcript update process completed');
     }
 
     updateUIForLoadingState() {
@@ -215,9 +228,17 @@ class YouTubeChatAssistant {
 
     async fetchTranscript() {
         const videoId = this.getVideoId();
+        console.log('🎥 Starting transcript fetch for video ID:', videoId);
         if (!videoId) return null;
 
+        // For now, skip the new API and use fallback directly to avoid CORS issues
+        console.log('⚡ Using fallback method directly (Python API not deployed yet)');
+        return await this.fetchTranscriptFallback();
+
+        /* 
+        // This will be enabled once Python API is deployed
         try {
+            console.log('🔄 Attempting new Python transcript API...');
             const response = await fetch('https://sage-of93.vercel.app/api/transcript', {
                 method: 'POST',
                 headers: {
@@ -228,22 +249,111 @@ class YouTubeChatAssistant {
                 })
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                return { error: errorData.error || 'Failed to fetch transcript' };
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ New transcript API successful!');
+                console.log('📄 FULL TRANSCRIPT (New API):');
+                console.log('='.repeat(50));
+                console.log(data.transcript);
+                console.log('='.repeat(50));
+                console.log('📊 Transcript metadata:', {
+                    language: data.language_code,
+                    isGenerated: data.is_generated,
+                    totalEntries: data.total_entries,
+                    transcriptLength: data.transcript ? data.transcript.length : 0
+                });
+                return { 
+                    data: data.transcript,
+                    structured: data.structured_transcript,
+                    language: data.language_code,
+                    isGenerated: data.is_generated,
+                    totalEntries: data.total_entries
+                };
+            } else {
+                console.warn('❌ New transcript API failed with status:', response.status);
+                return await this.fetchTranscriptFallback();
+            }
+        } catch (error) {
+            console.error('❌ New transcript API error:', error);
+            return await this.fetchTranscriptFallback();
+        }
+        */
+    }
+
+    async fetchTranscriptFallback() {
+        const videoId = this.getVideoId();
+        if (!videoId) return null;
+
+        try {
+            console.log('🔄 Using fallback transcript method (old scraping)...');
+            const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
+            const html = await response.text();
+            
+            console.log('📥 Fetched YouTube page HTML, length:', html.length);
+            
+            const captionsMatch = html.match(/"captionTracks":\[(.*?)\]/);
+            if (!captionsMatch) {
+                console.error('❌ No captionTracks found in HTML');
+                return { error: 'No transcript available for this video. Please try another video.' };
             }
 
-            const data = await response.json();
+            console.log('✅ Found captionTracks in HTML');
+            const captions = JSON.parse(`[${captionsMatch[1]}]`);
+            console.log('📋 Available captions:', captions.map(c => ({ lang: c.languageCode, name: c.name?.simpleText })));
+            
+            let selectedCaptions = captions.find(caption => caption.languageCode === 'en');
+            
+            if (!selectedCaptions && captions.length > 0) {
+                selectedCaptions = captions[0];
+                console.log('⚠️ No English captions found, using:', selectedCaptions.languageCode);
+            }
+
+            if (!selectedCaptions?.baseUrl) {
+                console.error('❌ No baseUrl found in selected captions');
+                return { error: 'No transcript available for this video.' };
+            }
+
+            console.log('🔗 Fetching transcript from URL:', selectedCaptions.baseUrl.substring(0, 100) + '...');
+            const transcriptResponse = await fetch(selectedCaptions.baseUrl);
+            const transcriptText = await transcriptResponse.text();
+            
+            console.log('📥 Raw transcript XML length:', transcriptText.length);
+            
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(transcriptText, 'text/xml');
+            const textElements = doc.getElementsByTagName('text');
+            
+            console.log('📊 Found text elements:', textElements.length);
+            
+            const transcript = Array.from(textElements)
+                .map(text => text.textContent.trim())
+                .filter(text => text)
+                .join('\n');
+
+            console.log('✅ Fallback transcript method successful!');
+            console.log('📄 FULL TRANSCRIPT (Fallback):');
+            console.log('='.repeat(50));
+            console.log(transcript);
+            console.log('='.repeat(50));
+            console.log('📊 Transcript stats:', {
+                language: selectedCaptions.languageCode,
+                isGenerated: selectedCaptions.kind === 'asr',
+                transcriptLength: transcript.length,
+                segments: textElements.length
+            });
             
             return { 
-                data: data.transcript,
-                structured: data.structured_transcript,
-                language: data.language_code,
-                isGenerated: data.is_generated,
-                totalEntries: data.total_entries
+                data: transcript,
+                language: selectedCaptions.languageCode,
+                isGenerated: selectedCaptions.kind === 'asr'
             };
         } catch (error) {
-            console.error('Error fetching transcript:', error);
+            console.error('❌ Fallback transcript method also failed:', error);
+            console.error('Full error details:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
             return { error: 'Failed to fetch transcript. Please try again.' };
         }
     }
@@ -297,6 +407,14 @@ class YouTubeChatAssistant {
                 messagesDiv.appendChild(loadingElement);
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 try {
+                    console.log('💬 Preparing to send message to AI...');
+                    console.log('📊 Current transcript state:', {
+                        hasTranscript: !!this.transcript,
+                        hasData: !!this.transcript?.data,
+                        hasError: !!this.transcript?.error,
+                        dataLength: this.transcript?.data?.length || 0
+                    });
+                    
                     const videoData = {
                         transcript: this.transcript?.data || '',
                         metadata: await this.getVideoMetadata(),
@@ -310,6 +428,21 @@ class YouTubeChatAssistant {
                     // Check if we have transcript error
                     if (this.transcript?.error) {
                         videoData.transcriptError = this.transcript.error;
+                        console.log('⚠️ Transcript error will be sent to AI:', this.transcript.error);
+                    }
+                    
+                    console.log('📤 Sending video data to AI:', {
+                        transcriptLength: videoData.transcript.length,
+                        hasMetadata: !!videoData.metadata,
+                        hasTranscriptError: !!videoData.transcriptError,
+                        transcriptInfo: videoData.transcriptInfo
+                    });
+                    
+                    if (videoData.transcript.length > 0) {
+                        console.log('📄 TRANSCRIPT BEING SENT TO AI:');
+                        console.log('='.repeat(40));
+                        console.log(videoData.transcript.substring(0, 500) + (videoData.transcript.length > 500 ? '...' : ''));
+                        console.log('='.repeat(40));
                     }
                     
                     const response = await fetch('https://sage-of93.vercel.app/api', {
