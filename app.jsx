@@ -240,8 +240,8 @@ class YouTubeChatAssistant {
         if (!videoId) return null;
 
         try {
-            console.log('🔄 Attempting Node.js transcript API...');
-            const response = await fetch('https://sage-requests.vercel.app/api/index', {
+            console.log('🔄 Attempting Python transcript API...');
+            const response = await fetch('http://localhost:5001/api/transcript', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -253,30 +253,31 @@ class YouTubeChatAssistant {
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('✅ Node.js transcript API successful!');
-                console.log('📄 FULL TRANSCRIPT (Node.js API):');
-                console.log('='.repeat(50));
-                console.log(data.transcript);
-                console.log('='.repeat(50));
-                console.log('📊 Transcript metadata:', data.metadata);
+                console.log('✅ Python transcript API successful!');
+                console.log(' Transcript metadata:', data.metadata);
                 
                 // Convert the transcript format to text for compatibility
                 const transcriptText = data.transcript.map(item => item.text).join(' ');
                 
+                console.log('📄 FULL TRANSCRIPT (Python API):');
+                console.log('='.repeat(50));
+                console.log(transcriptText.substring(0, 500) + '...');
+                console.log('='.repeat(50));
+                
                 return { 
                     data: transcriptText,
                     structured: data.transcript,
-                    language: 'en', // Default language
-                    isGenerated: false, // Assume not generated
-                    totalEntries: data.metadata.segmentCount
+                    language: data.metadata.language || 'en',
+                    isGenerated: data.metadata.isGenerated || false,
+                    totalEntries: data.metadata.segmentCount || data.transcript.length
                 };
             } else {
                 const errorData = await response.json();
-                console.warn('❌ Node.js transcript API failed:', errorData);
+                console.warn('❌ Python transcript API failed:', errorData);
                 return await this.fetchTranscriptFallback();
             }
         } catch (error) {
-            console.error('❌ Node.js transcript API error:', error);
+            console.error('❌ Python transcript API error:', error);
             return await this.fetchTranscriptFallback();
         }
     }
