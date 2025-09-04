@@ -232,8 +232,8 @@ class YouTubeChatAssistant {
         if (!videoId) return null;
 
         try {
-            console.log('🔄 Attempting new Python transcript API...');
-            const response = await fetch('https://sage-of93.vercel.app/api/transcript', {
+            console.log('🔄 Attempting Node.js transcript API...');
+            const response = await fetch('https://sage-of93.vercel.app/api/transcript-js', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -245,8 +245,8 @@ class YouTubeChatAssistant {
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('✅ New transcript API successful!');
-                console.log('📄 FULL TRANSCRIPT (New API):');
+                console.log('✅ Node.js transcript API successful!');
+                console.log('📄 FULL TRANSCRIPT (Node.js API):');
                 console.log('='.repeat(50));
                 console.log(data.transcript);
                 console.log('='.repeat(50));
@@ -264,11 +264,12 @@ class YouTubeChatAssistant {
                     totalEntries: data.total_entries
                 };
             } else {
-                console.warn('❌ New transcript API failed with status:', response.status);
+                const errorData = await response.json();
+                console.warn('❌ Node.js transcript API failed:', errorData);
                 return await this.fetchTranscriptFallback();
             }
         } catch (error) {
-            console.error('❌ New transcript API error:', error);
+            console.error('❌ Node.js transcript API error:', error);
             return await this.fetchTranscriptFallback();
         }
     }
