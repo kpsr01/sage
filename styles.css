@@ -50,6 +50,18 @@
     border-color: #065fd4;
 }
 
+.debug-bubble {
+    font-family: 'Courier New', monospace !important;
+    white-space: pre-wrap;
+    max-height: 150px;
+    overflow-y: auto;
+    word-wrap: break-word;
+}
+
+.debug-bubble strong {
+    color: #333;
+}
+
 .send-button {
     background: #065fd4;
     color: white;
@@ -197,6 +209,16 @@
 .yt-extension-sidebar.dark-mode .collapse-button:hover {
     color: #3ea6ff;
     background-color: rgba(62, 166, 255, 0.1);
+}
+
+.yt-extension-sidebar.dark-mode .debug-bubble {
+    background-color: #1a1a1a !important;
+    border-color: #444 !important;
+    color: #ffffff;
+}
+
+.yt-extension-sidebar.dark-mode .debug-bubble strong {
+    color: #ffffff;
 }
 
 .yt-extension-sidebar.dark-mode .send-button {
