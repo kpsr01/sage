@@ -89,14 +89,21 @@ class YouTubeChatAssistant {
     }
 
     init() {
+        console.log('🔥 SAGE INIT CALLED - Current URL:', window.location.href);
         if (this.site.includes('youtube.com')) {
+            console.log('📺 YouTube site detected, initializing...');
             this.isLoading = true;
             this.setupObserver();
             const sidebar = document.querySelector('#secondary.style-scope.ytd-watch-flexy');
             if (sidebar) {
+                console.log('✅ Sidebar found immediately, inserting and updating transcript');
                 this.insertInSidebar();
                 this.updateTranscript();
+            } else {
+                console.log('⏳ Sidebar not found yet, waiting for observer...');
             }
+        } else {
+            console.log('❌ Not on YouTube, skipping initialization');
         }
     }
 
@@ -118,6 +125,7 @@ class YouTubeChatAssistant {
 
     async updateTranscript() {
         console.log('🚀 Starting transcript update process...');
+        console.log('📍 Current video ID:', this.getVideoId());
         this.isLoading = true;
         this.updateUIForLoadingState();
         
@@ -505,9 +513,11 @@ class YouTubeChatAssistant {
     }
 
     setupObserver() {
+        console.log('👀 Setting up sidebar observer...');
         const observer = new MutationObserver((mutations, obs) => {
             const sidebar = document.querySelector('#secondary.style-scope.ytd-watch-flexy');
             if (sidebar) {
+                console.log('✅ Sidebar found by observer, inserting and updating transcript');
                 this.insertInSidebar();
                 this.updateTranscript();
                 obs.disconnect();
@@ -519,7 +529,10 @@ class YouTubeChatAssistant {
             subtree: true
         });
 
-        setTimeout(() => observer.disconnect(), 10000);
+        setTimeout(() => {
+            console.log('⏰ Observer timeout reached, disconnecting');
+            observer.disconnect();
+        }, 10000);
     }
 
     setupThemeObserver() {
