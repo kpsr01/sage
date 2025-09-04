@@ -1,6 +1,6 @@
 const { YoutubeTranscript } = require('youtube-transcript');
 
-export default async (req, res) => {
+module.exports = async (req, res) => {
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
