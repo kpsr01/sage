@@ -231,12 +231,6 @@ class YouTubeChatAssistant {
         console.log('🎥 Starting transcript fetch for video ID:', videoId);
         if (!videoId) return null;
 
-        // For now, skip the new API and use fallback directly to avoid CORS issues
-        console.log('⚡ Using fallback method directly (Python API not deployed yet)');
-        return await this.fetchTranscriptFallback();
-
-        /* 
-        // This will be enabled once Python API is deployed
         try {
             console.log('🔄 Attempting new Python transcript API...');
             const response = await fetch('https://sage-of93.vercel.app/api/transcript', {
@@ -277,7 +271,6 @@ class YouTubeChatAssistant {
             console.error('❌ New transcript API error:', error);
             return await this.fetchTranscriptFallback();
         }
-        */
     }
 
     async fetchTranscriptFallback() {
