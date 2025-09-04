@@ -233,7 +233,7 @@ class YouTubeChatAssistant {
 
         try {
             console.log('🔄 Attempting Node.js transcript API...');
-            const response = await fetch('https://sage-of93.vercel.app/api/transcript-js', {
+            const response = await fetch('https://sage-requests.vercel.app/api/index', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -250,18 +250,17 @@ class YouTubeChatAssistant {
                 console.log('='.repeat(50));
                 console.log(data.transcript);
                 console.log('='.repeat(50));
-                console.log('📊 Transcript metadata:', {
-                    language: data.language_code,
-                    isGenerated: data.is_generated,
-                    totalEntries: data.total_entries,
-                    transcriptLength: data.transcript ? data.transcript.length : 0
-                });
+                console.log('📊 Transcript metadata:', data.metadata);
+                
+                // Convert the transcript format to text for compatibility
+                const transcriptText = data.transcript.map(item => item.text).join(' ');
+                
                 return { 
-                    data: data.transcript,
-                    structured: data.structured_transcript,
-                    language: data.language_code,
-                    isGenerated: data.is_generated,
-                    totalEntries: data.total_entries
+                    data: transcriptText,
+                    structured: data.transcript,
+                    language: 'en', // Default language
+                    isGenerated: false, // Assume not generated
+                    totalEntries: data.metadata.segmentCount
                 };
             } else {
                 const errorData = await response.json();
