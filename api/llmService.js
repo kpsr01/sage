@@ -16,13 +16,7 @@ class LLMService {
 
   async answerQuery(query, videoData) {
       try {
-          console.log('Processing query with video data:', {
-              queryLength: query.length,
-              hasTranscript: !!videoData.transcript,
-              hasMetadata: !!videoData.metadata,
-              hasTranscriptError: !!videoData.transcriptError,
-              transcriptInfo: videoData.transcriptInfo
-          });
+
 
           let formattedContext = `
               Video Title: ${videoData.metadata.title}
@@ -114,7 +108,7 @@ output: A helpful and context-aware response that directly addresses the user's 
           }
 
           const data = await response.json();
-          console.log('Successfully received response from OpenRouter API');
+
           return data.choices[0].message.content;
           
       } catch (error) {

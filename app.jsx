@@ -1,4 +1,4 @@
-import llmService from './api/llmService.js';
+
 
 const site = window.location.hostname
 
@@ -89,21 +89,14 @@ class YouTubeChatAssistant {
     }
 
     init() {
-        console.log('🔥 SAGE INIT CALLED - Current URL:', window.location.href);
         if (this.site.includes('youtube.com')) {
-            console.log('📺 YouTube site detected, initializing...');
             this.isLoading = true;
             this.setupObserver();
             const sidebar = document.querySelector('#secondary.style-scope.ytd-watch-flexy');
             if (sidebar) {
-                console.log('✅ Sidebar found immediately, inserting and updating transcript');
                 this.insertInSidebar();
                 this.updateTranscript();
-            } else {
-                console.log('⏳ Sidebar not found yet, waiting for observer...');
             }
-        } else {
-            console.log('❌ Not on YouTube, skipping initialization');
         }
     }
 
@@ -124,8 +117,6 @@ class YouTubeChatAssistant {
     }
 
     async updateTranscript() {
-        console.log('🚀 Starting transcript update process...');
-        console.log('📍 Current video ID:', this.getVideoId());
         this.isLoading = true;
         this.updateUIForLoadingState();
         
@@ -137,34 +128,20 @@ class YouTubeChatAssistant {
         
         if (transcriptResult && !transcriptResult.error) {
             this.transcript = transcriptResult;
-            console.log('✅ Transcript successfully loaded and stored!');
-            console.log('📊 Final transcript data structure:', {
-                language: transcriptResult.language,
-                isGenerated: transcriptResult.isGenerated,
-                entries: transcriptResult.totalEntries,
-                dataLength: transcriptResult.data?.length || 0,
-                hasStructured: !!transcriptResult.structured
-            });
         } else if (transcriptResult?.error) {
-            console.warn('⚠️ Transcript error occurred:', transcriptResult.error);
+            console.warn('Transcript error occurred:', transcriptResult.error);
             this.transcript = { error: transcriptResult.error };
         } else {
-            console.error('❌ No transcript result returned');
+            console.error('No transcript result returned');
             this.transcript = { error: 'Unknown transcript error' };
         }
         
         if (metadata) {
             this.metadata = metadata;
-            console.log('✅ Video metadata loaded:', {
-                title: metadata.title?.substring(0, 50) + '...',
-                channel: metadata.channel,
-                hasDescription: !!metadata.description
-            });
         }
         
         this.isLoading = false;
         this.updateUIForReadyState();
-        console.log('🏁 Transcript update process completed');
     }
 
     updateUIForLoadingState() {
@@ -197,10 +174,76 @@ class YouTubeChatAssistant {
         
         if (messagesDiv) {
             messagesDiv.innerHTML = '';
-            const welcomeMsg = document.createElement('div');
-            welcomeMsg.className = 'ai-bubble welcome-bubble';
-            welcomeMsg.textContent = 'Welcome! Ask me anything about this video...';
-            messagesDiv.appendChild(welcomeMsg);
+            
+            // Display transcript instead of welcome message
+            if (this.transcript) {
+                if (this.transcript.error) {
+                    // Show error message if transcript failed
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'ai-bubble error-bubble';
+                    errorMsg.textContent = `Transcript Error: ${this.transcript.error}`;
+                    messagesDiv.appendChild(errorMsg);
+                    
+                    const fallbackMsg = document.createElement('div');
+                    fallbackMsg.className = 'ai-bubble welcome-bubble';
+                    fallbackMsg.textContent = 'Ask me anything about this video based on its title and description...';
+                    messagesDiv.appendChild(fallbackMsg);
+                } else if (this.transcript.data) {
+                    // Show transcript data
+                    const transcriptMsg = document.createElement('div');
+                    transcriptMsg.className = 'ai-bubble transcript-bubble';
+                    transcriptMsg.style.maxHeight = '200px';
+                    transcriptMsg.style.overflowY = 'auto';
+                    transcriptMsg.style.fontSize = '12px';
+                    transcriptMsg.style.lineHeight = '1.3';
+                    transcriptMsg.style.whiteSpace = 'pre-wrap';
+                    transcriptMsg.style.wordBreak = 'break-word';
+                    
+                    // Show first 500 characters with option to expand
+                    const shortTranscript = this.transcript.data.substring(0, 500);
+                    const hasMore = this.transcript.data.length > 500;
+                    
+                    transcriptMsg.innerHTML = `
+                        <strong>📄 Video Transcript:</strong><br/>
+                        <div style="margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                            <span id="transcriptContent">${shortTranscript}${hasMore ? '...' : ''}</span>
+                            ${hasMore ? '<br/><button id="expandTranscript" style="margin-top: 8px; padding: 4px 8px; border: none; background: #065fd4; color: white; border-radius: 4px; cursor: pointer; font-size: 11px;">Show Full Transcript</button>' : ''}
+                        </div>
+                        <div style="margin-top: 8px; font-size: 11px; color: #666;">
+                            Language: ${this.transcript.language || 'Unknown'} | 
+                            Type: ${this.transcript.isGenerated ? 'Auto-generated' : 'Manual'} | 
+                            Segments: ${this.transcript.totalEntries || 0}
+                        </div>
+                    `;
+                    messagesDiv.appendChild(transcriptMsg);
+                    
+                    // Handle expand button
+                    if (hasMore) {
+                        const expandBtn = transcriptMsg.querySelector('#expandTranscript');
+                        if (expandBtn) {
+                            expandBtn.addEventListener('click', () => {
+                                const contentSpan = transcriptMsg.querySelector('#transcriptContent');
+                                if (contentSpan) {
+                                    contentSpan.textContent = this.transcript.data;
+                                    expandBtn.style.display = 'none';
+                                }
+                            });
+                        }
+                    }
+                } else {
+                    // Fallback if no transcript data
+                    const welcomeMsg = document.createElement('div');
+                    welcomeMsg.className = 'ai-bubble welcome-bubble';
+                    welcomeMsg.textContent = 'Welcome! Ask me anything about this video...';
+                    messagesDiv.appendChild(welcomeMsg);
+                }
+            } else {
+                // Default welcome message if transcript is not loaded yet
+                const welcomeMsg = document.createElement('div');
+                welcomeMsg.className = 'ai-bubble welcome-bubble';
+                welcomeMsg.textContent = 'Welcome! Ask me anything about this video...';
+                messagesDiv.appendChild(welcomeMsg);
+            }
             
             const summarizeBtn = document.createElement('button');
             summarizeBtn.className = 'summarize-float-button';
@@ -236,113 +279,163 @@ class YouTubeChatAssistant {
 
     async fetchTranscript() {
         const videoId = this.getVideoId();
-        console.log('🎥 Starting transcript fetch for video ID:', videoId);
         if (!videoId) return null;
 
         try {
-            console.log('🔄 Attempting Python transcript API...');
-            const response = await fetch('http://localhost:5001/api/transcript', {
+            // Call our production server that uses youtube-transcript-plus
+            const response = await fetch('https://sage-of93.vercel.app/api/transcript', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    videoId: videoId
+                    videoId: videoId,
+                    config: {
+                        lang: 'en', // Prefer English
+                        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+                    }
                 })
             });
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('✅ Python transcript API successful!');
-                console.log(' Transcript metadata:', data.metadata);
-                
-                // Convert the transcript format to text for compatibility
-                const transcriptText = data.transcript.map(item => item.text).join(' ');
-                
-                console.log('📄 FULL TRANSCRIPT (Python API):');
-                console.log('='.repeat(50));
-                console.log(transcriptText.substring(0, 500) + '...');
-                console.log('='.repeat(50));
                 
                 return { 
-                    data: transcriptText,
+                    data: data.plainText,
                     structured: data.transcript,
-                    language: data.metadata.language || 'en',
-                    isGenerated: data.metadata.isGenerated || false,
-                    totalEntries: data.metadata.segmentCount || data.transcript.length
+                    language: data.metadata.language,
+                    isGenerated: data.metadata.isGenerated,
+                    totalEntries: data.metadata.segmentCount
                 };
             } else {
                 const errorData = await response.json();
-                console.warn('❌ Python transcript API failed:', errorData);
+                console.warn('❌ youtube-transcript-plus API failed:', errorData);
+                
+                // Handle specific error types
+                if (response.status === 404) {
+                    return { error: errorData.error || 'No transcript available for this video' };
+                } else if (response.status === 403) {
+                    return { error: errorData.error || 'Transcripts are disabled for this video' };
+                } else if (response.status === 429) {
+                    return { error: errorData.error || 'Too many requests. Please try again later' };
+                } else if (response.status === 400) {
+                    return { error: errorData.error || 'Invalid video ID' };
+                }
+                
+                // Fall back to legacy method for other errors
+
                 return await this.fetchTranscriptFallback();
             }
+            const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+            if (!captionTracks || captionTracks.length === 0) {
+                console.warn('⚠️ No caption tracks found via Innertube API');
+                return await this.fetchTranscriptFallback();
+            }
+
+            console.log('� Found caption tracks:', captionTracks.map(track => ({ lang: track.languageCode, name: track.name?.simpleText })));
+
+            // Step 5: Select appropriate transcript (prefer English)
+            let selectedTrack = captionTracks.find(track => track.languageCode === 'en');
+            if (!selectedTrack) {
+                selectedTrack = captionTracks[0]; // Use first available if no English
+            }
+
+            if (!selectedTrack.baseUrl) {
+                throw new Error('No baseUrl found for selected caption track');
+            }
+
+            // Step 6: Fetch transcript XML
+            const transcriptResponse = await fetch(selectedTrack.baseUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+                }
+            });
+
+            if (!transcriptResponse.ok) {
+                throw new Error(`Transcript fetch failed: ${transcriptResponse.status}`);
+            }
+
+            const transcriptXML = await transcriptResponse.text();
+            
+            // Step 7: Parse XML transcript
+            const xmlParser = new DOMParser();
+            const xmlDoc = xmlParser.parseFromString(transcriptXML, 'text/xml');
+            const textElements = xmlDoc.getElementsByTagName('text');
+
+            if (textElements.length === 0) {
+                throw new Error('No text elements found in transcript XML');
+            }
+
+            // Step 8: Convert to structured format
+            const transcriptData = Array.from(textElements).map(element => ({
+                text: element.textContent.trim(),
+                offset: parseFloat(element.getAttribute('start') || '0'),
+                duration: parseFloat(element.getAttribute('dur') || '0'),
+                lang: selectedTrack.languageCode
+            })).filter(item => item.text);
+
+            // Step 9: Create text version
+            const transcriptText = transcriptData.map(item => item.text).join(' ');
+
+
+
+            return { 
+                data: transcriptText,
+                structured: transcriptData.map(item => ({
+                    text: item.text,
+                    start: item.offset,
+                    duration: item.duration
+                })),
+                language: selectedTrack.languageCode,
+                isGenerated: selectedTrack.kind === 'asr',
+                totalEntries: transcriptData.length
+            };
+
         } catch (error) {
-            console.error('❌ Python transcript API error:', error);
+            console.error('❌ Local server connection failed:', error);
+
             return await this.fetchTranscriptFallback();
         }
     }
 
+
+
+    // FALLBACK METHOD: Legacy HTML scraping method (kept as backup)
     async fetchTranscriptFallback() {
         const videoId = this.getVideoId();
         if (!videoId) return null;
 
         try {
-            console.log('🔄 Using fallback transcript method (old scraping)...');
             const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
             const html = await response.text();
             
-            console.log('📥 Fetched YouTube page HTML, length:', html.length);
-            
             const captionsMatch = html.match(/"captionTracks":\[(.*?)\]/);
             if (!captionsMatch) {
-                console.error('❌ No captionTracks found in HTML');
                 return { error: 'No transcript available for this video. Please try another video.' };
             }
 
-            console.log('✅ Found captionTracks in HTML');
             const captions = JSON.parse(`[${captionsMatch[1]}]`);
-            console.log('📋 Available captions:', captions.map(c => ({ lang: c.languageCode, name: c.name?.simpleText })));
             
             let selectedCaptions = captions.find(caption => caption.languageCode === 'en');
             
             if (!selectedCaptions && captions.length > 0) {
                 selectedCaptions = captions[0];
-                console.log('⚠️ No English captions found, using:', selectedCaptions.languageCode);
             }
 
             if (!selectedCaptions?.baseUrl) {
-                console.error('❌ No baseUrl found in selected captions');
                 return { error: 'No transcript available for this video.' };
             }
-
-            console.log('🔗 Fetching transcript from URL:', selectedCaptions.baseUrl.substring(0, 100) + '...');
             const transcriptResponse = await fetch(selectedCaptions.baseUrl);
             const transcriptText = await transcriptResponse.text();
-            
-            console.log('📥 Raw transcript XML length:', transcriptText.length);
             
             const parser = new DOMParser();
             const doc = parser.parseFromString(transcriptText, 'text/xml');
             const textElements = doc.getElementsByTagName('text');
             
-            console.log('📊 Found text elements:', textElements.length);
-            
             const transcript = Array.from(textElements)
                 .map(text => text.textContent.trim())
                 .filter(text => text)
                 .join('\n');
-
-            console.log('✅ Fallback transcript method successful!');
-            console.log('📄 FULL TRANSCRIPT (Fallback):');
-            console.log('='.repeat(50));
-            console.log(transcript);
-            console.log('='.repeat(50));
-            console.log('📊 Transcript stats:', {
-                language: selectedCaptions.languageCode,
-                isGenerated: selectedCaptions.kind === 'asr',
-                transcriptLength: transcript.length,
-                segments: textElements.length
-            });
             
             return { 
                 data: transcript,
@@ -350,12 +443,7 @@ class YouTubeChatAssistant {
                 isGenerated: selectedCaptions.kind === 'asr'
             };
         } catch (error) {
-            console.error('❌ Fallback transcript method also failed:', error);
-            console.error('Full error details:', {
-                message: error.message,
-                stack: error.stack,
-                name: error.name
-            });
+            console.error('Fallback transcript method failed:', error);
             return { error: 'Failed to fetch transcript. Please try again.' };
         }
     }
@@ -409,14 +497,6 @@ class YouTubeChatAssistant {
                 messagesDiv.appendChild(loadingElement);
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 try {
-                    console.log('💬 Preparing to send message to AI...');
-                    console.log('📊 Current transcript state:', {
-                        hasTranscript: !!this.transcript,
-                        hasData: !!this.transcript?.data,
-                        hasError: !!this.transcript?.error,
-                        dataLength: this.transcript?.data?.length || 0
-                    });
-                    
                     const videoData = {
                         transcript: this.transcript?.data || '',
                         metadata: await this.getVideoMetadata(),
@@ -430,21 +510,6 @@ class YouTubeChatAssistant {
                     // Check if we have transcript error
                     if (this.transcript?.error) {
                         videoData.transcriptError = this.transcript.error;
-                        console.log('⚠️ Transcript error will be sent to AI:', this.transcript.error);
-                    }
-                    
-                    console.log('📤 Sending video data to AI:', {
-                        transcriptLength: videoData.transcript.length,
-                        hasMetadata: !!videoData.metadata,
-                        hasTranscriptError: !!videoData.transcriptError,
-                        transcriptInfo: videoData.transcriptInfo
-                    });
-                    
-                    if (videoData.transcript.length > 0) {
-                        console.log('📄 TRANSCRIPT BEING SENT TO AI:');
-                        console.log('='.repeat(40));
-                        console.log(videoData.transcript.substring(0, 500) + (videoData.transcript.length > 500 ? '...' : ''));
-                        console.log('='.repeat(40));
                     }
                     
                     const response = await fetch('https://sage-of93.vercel.app/api', {
@@ -514,11 +579,9 @@ class YouTubeChatAssistant {
     }
 
     setupObserver() {
-        console.log('👀 Setting up sidebar observer...');
         const observer = new MutationObserver((mutations, obs) => {
             const sidebar = document.querySelector('#secondary.style-scope.ytd-watch-flexy');
             if (sidebar) {
-                console.log('✅ Sidebar found by observer, inserting and updating transcript');
                 this.insertInSidebar();
                 this.updateTranscript();
                 obs.disconnect();
@@ -531,7 +594,6 @@ class YouTubeChatAssistant {
         });
 
         setTimeout(() => {
-            console.log('⏰ Observer timeout reached, disconnecting');
             observer.disconnect();
         }, 10000);
     }
@@ -683,15 +745,6 @@ class YouTubeChatAssistant {
     }
 }
 
-// Example usage
-async function handleVideoLoad(videoData) {
-    const summary = await llmService.processVideoContent(videoData);
-    // Store or display the summary
-}
 
-async function handleUserQuery(query, videoContext) {
-    const answer = await llmService.answerQuery(query, videoContext);
-    // Display the answer
-}
 
 new YouTubeChatAssistant();

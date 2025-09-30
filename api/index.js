@@ -21,20 +21,11 @@ export default async (req, res) => {
   }
 
   try {
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
     const { query, videoData } = req.body;
     
     if (!query || !videoData) {
-      console.error('Missing parameters:', { query: !!query, videoData: !!videoData });
       return res.status(400).json({ error: 'Missing required parameters' });
     }
-
-    console.log('Received request with query:', query);
-    console.log('Video data received:', {
-      hasTranscript: !!videoData.transcript,
-      hasMetadata: !!videoData.metadata,
-      metadataKeys: videoData.metadata ? Object.keys(videoData.metadata) : []
-    });
 
     const llmService = new LLMService();
     const answer = await llmService.answerQuery(query, videoData);
