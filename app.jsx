@@ -88,30 +88,6 @@ class YouTubeChatAssistant {
         this.setupThemeObserver();
     }
 
-    // Cross-browser messaging helper (Chrome callback or Firefox Promise)
-    sendExtensionMessage(message) {
-        return new Promise((resolve, reject) => {
-            try {
-                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                    chrome.runtime.sendMessage(message, (response) => {
-                        const lastError = chrome.runtime.lastError;
-                        if (lastError) {
-                            console.warn('⚠️ DEBUG: chrome.runtime.sendMessage error:', lastError.message);
-                            return reject(new Error(lastError.message));
-                        }
-                        resolve(response);
-                    });
-                } else if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.sendMessage) {
-                    browser.runtime.sendMessage(message).then(resolve).catch(reject);
-                } else {
-                    reject(new Error('Extension messaging API not available'));
-                }
-            } catch (err) {
-                reject(err);
-            }
-        });
-    }
-
     init() {
         if (this.site.includes('youtube.com')) {
             this.isLoading = true;
@@ -300,21 +276,8 @@ class YouTubeChatAssistant {
     }
 
     getVideoId() {
-        // Try standard watch URL first
-        const params = new URLSearchParams(window.location.search);
-        const vParam = params.get('v');
-        if (vParam) return vParam;
-
-        // Handle Shorts: https://www.youtube.com/shorts/<VIDEO_ID>
-        const shortsMatch = window.location.pathname.match(/\/shorts\/([a-zA-Z0-9_-]{5,})/);
-        if (shortsMatch?.[1]) return shortsMatch[1];
-
-        // Handle Embed: https://www.youtube.com/embed/<VIDEO_ID>
-        const embedMatch = window.location.pathname.match(/\/embed\/([a-zA-Z0-9_-]{5,})/);
-        if (embedMatch?.[1]) return embedMatch[1];
-
-        console.warn('⚠️ DEBUG: No videoId found for URL', window.location.href);
-        return null;
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('v');
     }
 
     async fetchTranscript() {
@@ -324,20 +287,23 @@ class YouTubeChatAssistant {
 
         try {
             // Call our dedicated transcript server
-            console.log('🌐 DEBUG: Requesting transcript via background proxy...');
-            const proxyResp = await this.sendExtensionMessage({
-                type: 'FETCH_TRANSCRIPT',
-                payload: {
-                    videoId,
+            console.log('🌐 DEBUG: Making request to transcript server...');
+            const response = await fetch('https://sage-server.vercel.app/api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    videoId: videoId,
                     config: {
-                        lang: 'en',
+                        lang: 'en', // Prefer English
                         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
                     }
-                }
+                })
             });
 
-            if (proxyResp?.ok) {
-                const data = proxyResp.data;
+            if (response.ok) {
+                const data = await response.json();
                 console.log('✅ DEBUG: Transcript fetched successfully, length:', data.plainText?.length);
                 
                 return { 
@@ -348,19 +314,17 @@ class YouTubeChatAssistant {
                     totalEntries: data.metadata.segmentCount
                 };
             } else {
-                const status = proxyResp?.status;
-                const errorData = proxyResp?.data || proxyResp?.error || {};
-                console.warn('❌ DEBUG: Transcript API failed via proxy:', status, errorData);
+                const errorData = await response.json();
+                console.warn('❌ DEBUG: Transcript API failed:', response.status, errorData);
                 
                 // Handle specific error types
-                if (status === 404) {
-                    // Fall back to legacy method on 404 to attempt scraping
-                    return await this.fetchTranscriptFallback();
-                } else if (status === 403) {
+                if (response.status === 404) {
+                    return { error: errorData.error || 'No transcript available for this video' };
+                } else if (response.status === 403) {
                     return { error: errorData.error || 'Transcripts are disabled for this video' };
-                } else if (status === 429) {
+                } else if (response.status === 429) {
                     return { error: errorData.error || 'Too many requests. Please try again later' };
-                } else if (status === 400) {
+                } else if (response.status === 400) {
                     return { error: errorData.error || 'Invalid video ID' };
                 }
                 

@@ -20,16 +20,16 @@ The Sage extension now uses a **two-server architecture**:
    - Import `https://github.com/kpsr01/sage-server`
    - Deploy with default settings
 
-3. **Your Vercel URL**: `https://sage-server.vercel.app` ✅
+3. **Note your Vercel URL** (e.g., `https://sage-server-abc123.vercel.app`)
 
 ## Step 2: Update Main Sage Extension
 
-1. **Transcript server URL updated** in `app.jsx`:
+1. **Update the transcript server URL** in `app.jsx`:
    ```javascript
    // Line ~286 in app.jsx
-   const response = await fetch('https://sage-server.vercel.app/api/transcript', {
+   const response = await fetch('https://your-sage-server.vercel.app/api/transcript', {
    ```
-   ✅ **Already configured with the correct URL**
+   Replace `https://your-sage-server.vercel.app` with your actual Vercel URL from Step 1.
 
 2. **Build the extension**:
    ```bash
@@ -42,7 +42,7 @@ The Sage extension now uses a **two-server architecture**:
 
 1. **Test transcript server directly**:
    ```bash
-   curl -X POST https://sage-server.vercel.app/api/transcript \
+   curl -X POST https://your-sage-server.vercel.app/api/transcript \
      -H "Content-Type: application/json" \
      -d '{"videoId": "dQw4w9WgXcQ", "config": {"lang": "en"}}'
    ```

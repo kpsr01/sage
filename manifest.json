@@ -11,14 +11,8 @@
     "permissions": [
         "storage"
     ],
-    "background": {
-        "service_worker": "background.js",
-        "type": "module"
-    },
     "host_permissions": [
-        "http://localhost:5001/",
-        "https://sage-server.vercel.app/*",
-        "https://sage-of93.vercel.app/*"
+        "http://localhost:5001/"
     ],
     "content_scripts": [
         {
