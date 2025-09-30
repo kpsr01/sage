@@ -354,7 +354,8 @@ class YouTubeChatAssistant {
                 
                 // Handle specific error types
                 if (status === 404) {
-                    return { error: errorData.error || 'No transcript available for this video' };
+                    // Fall back to legacy method on 404 to attempt scraping
+                    return await this.fetchTranscriptFallback();
                 } else if (status === 403) {
                     return { error: errorData.error || 'Transcripts are disabled for this video' };
                 } else if (status === 429) {
