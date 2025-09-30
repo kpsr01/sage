@@ -88,6 +88,30 @@ class YouTubeChatAssistant {
         this.setupThemeObserver();
     }
 
+    // Cross-browser messaging helper (Chrome callback or Firefox Promise)
+    sendExtensionMessage(message) {
+        return new Promise((resolve, reject) => {
+            try {
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                    chrome.runtime.sendMessage(message, (response) => {
+                        const lastError = chrome.runtime.lastError;
+                        if (lastError) {
+                            console.warn('⚠️ DEBUG: chrome.runtime.sendMessage error:', lastError.message);
+                            return reject(new Error(lastError.message));
+                        }
+                        resolve(response);
+                    });
+                } else if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.sendMessage) {
+                    browser.runtime.sendMessage(message).then(resolve).catch(reject);
+                } else {
+                    reject(new Error('Extension messaging API not available'));
+                }
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
     init() {
         if (this.site.includes('youtube.com')) {
             this.isLoading = true;
@@ -301,7 +325,7 @@ class YouTubeChatAssistant {
         try {
             // Call our dedicated transcript server
             console.log('🌐 DEBUG: Requesting transcript via background proxy...');
-            const proxyResp = await chrome.runtime.sendMessage({
+            const proxyResp = await this.sendExtensionMessage({
                 type: 'FETCH_TRANSCRIPT',
                 payload: {
                     videoId,
