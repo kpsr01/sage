@@ -288,7 +288,7 @@ class YouTubeChatAssistant {
         try {
             // Call our dedicated transcript server
             console.log('🌐 DEBUG: Making request to transcript server...');
-            const response = await fetch('https://sage-server.vercel.app/api/transcript', {
+            const response = await fetch('https://sage-server.vercel.app/api', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
