@@ -10,18 +10,34 @@ module.exports = async function handler(req, res) {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
 
+  const method = req.method;
+
   // Handle preflight requests
-  if (req.method === 'OPTIONS') {
+  if (method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  if (req.method !== 'POST') {
+  if (method !== 'POST' && method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { videoId, config = {} } = req.body;
+    let videoId;
+    let config = {};
+
+    if (method === 'POST') {
+      const body = req.body || {};
+      videoId = body.videoId;
+      config = body.config || {};
+    } else {
+      const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      videoId = url.searchParams.get('videoId');
+      const lang = url.searchParams.get('lang');
+      if (lang) {
+        config.lang = lang;
+      }
+    }
     
     if (!videoId) {
       return res.status(400).json({ error: 'Missing videoId parameter' });

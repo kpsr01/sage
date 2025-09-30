@@ -282,22 +282,45 @@ class YouTubeChatAssistant {
         if (!videoId) return null;
 
         try {
-            // Call our dedicated transcript server (separate Vercel deployment)
-            const response = await fetch('https://sage-server.vercel.app/api/transcript', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    videoId: videoId,
-                    config: {
-                        lang: 'en', // Prefer English
-                        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-                    }
-                })
-            });
+            const transcriptBaseUrl = 'https://sage-serv.vercel.app/api/transcript';
+            const transcriptUrl = new URL(transcriptBaseUrl);
+            transcriptUrl.searchParams.set('videoId', videoId);
+            transcriptUrl.searchParams.set('lang', 'en');
 
-            if (response.ok) {
+            let response;
+            let errorData;
+
+            try {
+                response = await fetch(transcriptUrl.toString(), {
+                    method: 'GET',
+                    credentials: 'omit'
+                });
+            } catch (getError) {
+                console.warn('Transcript GET request failed, will retry with POST:', getError);
+            }
+
+            if (!response || response.status === 404 || response.status === 405) {
+                try {
+                    response = await fetch(transcriptBaseUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            videoId: videoId,
+                            config: {
+                                lang: 'en',
+                                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+                            }
+                        })
+                    });
+                } catch (postError) {
+                    console.error('Transcript POST request failed:', postError);
+                    return await this.fetchTranscriptFallback();
+                }
+            }
+
+            if (response && response.ok) {
                 const data = await response.json();
                 
                 return { 
@@ -307,24 +330,31 @@ class YouTubeChatAssistant {
                     isGenerated: data.metadata.isGenerated,
                     totalEntries: data.metadata.segmentCount
                 };
-            } else {
-                const errorData = await response.json();
-                console.warn('youtube-transcript-plus API failed:', errorData);
-                
-                // Handle specific error types
-                if (response.status === 404) {
-                    return { error: errorData.error || 'No transcript available for this video' };
-                } else if (response.status === 403) {
-                    return { error: errorData.error || 'Transcripts are disabled for this video' };
-                } else if (response.status === 429) {
-                    return { error: errorData.error || 'Too many requests. Please try again later' };
-                } else if (response.status === 400) {
-                    return { error: errorData.error || 'Invalid video ID' };
-                }
-                
-                // Fall back to legacy method for other errors
-                return await this.fetchTranscriptFallback();
             }
+
+            if (response) {
+                try {
+                    errorData = await response.json();
+                } catch (parseError) {
+                    console.warn('Failed to parse transcript error response:', parseError);
+                }
+            }
+
+            console.warn('youtube-transcript-plus API failed:', errorData);
+
+            if (response) {
+                if (response.status === 404) {
+                    return { error: errorData?.error || 'No transcript available for this video' };
+                } else if (response.status === 403) {
+                    return { error: errorData?.error || 'Transcripts are disabled for this video' };
+                } else if (response.status === 429) {
+                    return { error: errorData?.error || 'Too many requests. Please try again later' };
+                } else if (response.status === 400) {
+                    return { error: errorData?.error || 'Invalid video ID' };
+                }
+            }
+
+            return await this.fetchTranscriptFallback();
 
         } catch (error) {
             console.error('Transcript API connection failed:', error);
