@@ -141,8 +141,7 @@
     "yallist": "^3.1.1",
     "yocto-queue": "^1.1.1",
     "youtube-transcript": "^1.2.1",
-    "youtube-transcript-api": "^1.1.2",
-    "youtube-transcript-plus": "^1.1.1"
+    "youtube-transcript-api": "^1.1.2"
   },
   "description": ""
 }

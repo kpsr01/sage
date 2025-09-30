@@ -282,8 +282,8 @@ class YouTubeChatAssistant {
         if (!videoId) return null;
 
         try {
-            // Call our production server that uses youtube-transcript-plus (fixed ES module import)
-            const response = await fetch('https://sage-of93.vercel.app/api/transcript', {
+            // Call our dedicated transcript server
+            const response = await fetch('https://sage-server.vercel.app/api/transcript', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
