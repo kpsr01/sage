@@ -16,7 +16,13 @@ class LLMService {
 
   async answerQuery(query, videoData) {
       try {
-
+          console.log('🔍 DEBUG LLMService: Processing query with video data:', {
+              hasTranscript: !!videoData.transcript,
+              transcriptLength: videoData.transcript?.length || 0,
+              hasTranscriptError: !!videoData.transcriptError,
+              transcriptError: videoData.transcriptError,
+              hasMetadata: !!videoData.metadata
+          });
 
           let formattedContext = `
               Video Title: ${videoData.metadata.title}
@@ -27,12 +33,14 @@ class LLMService {
           `;
 
           if (videoData.transcriptError) {
+              console.log('⚠️ DEBUG LLMService: Using transcript error path');
               formattedContext += `
               
               Note: Transcript is not available for this video (${videoData.transcriptError}).
               Please answer based on the video metadata provided above.
               `;
           } else if (videoData.transcript) {
+              console.log('✅ DEBUG LLMService: Using transcript data, length:', videoData.transcript.length);
               formattedContext += `
               
               Complete Transcript:
@@ -48,6 +56,8 @@ class LLMService {
               - Total segments: ${videoData.transcriptInfo.totalEntries}
               `;
               }
+          } else {
+              console.log('❌ DEBUG LLMService: No transcript data available');
           }
 
           const systemPrompt = `context: You are a sophisticated AI assistant integrated into a YouTube browser extension. Your role is to be an expert companion for the user, capable of understanding and discussing the video they are watching. You must create a seamless and intuitive experience, making the user feel like they are conversing with an intelligent entity that has full visual and auditory access to the video.

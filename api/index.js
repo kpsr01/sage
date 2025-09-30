@@ -23,6 +23,15 @@ export default async (req, res) => {
   try {
     const { query, videoData } = req.body;
     
+    console.log('🔍 DEBUG API: Received request:', {
+      hasQuery: !!query,
+      hasVideoData: !!videoData,
+      transcriptLength: videoData?.transcript?.length || 0,
+      hasTranscriptError: !!videoData?.transcriptError,
+      transcriptError: videoData?.transcriptError,
+      transcriptPreview: videoData?.transcript?.substring(0, 100) + '...'
+    });
+    
     if (!query || !videoData) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }

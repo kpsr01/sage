@@ -128,11 +128,18 @@ class YouTubeChatAssistant {
         
         if (transcriptResult && !transcriptResult.error) {
             this.transcript = transcriptResult;
+            console.log('✅ DEBUG: Transcript successfully fetched:', {
+                dataLength: transcriptResult.data?.length,
+                language: transcriptResult.language,
+                isGenerated: transcriptResult.isGenerated,
+                totalEntries: transcriptResult.totalEntries,
+                preview: transcriptResult.data?.substring(0, 200) + '...'
+            });
         } else if (transcriptResult?.error) {
-            console.warn('Transcript error occurred:', transcriptResult.error);
+            console.warn('⚠️ DEBUG: Transcript error occurred:', transcriptResult.error);
             this.transcript = { error: transcriptResult.error };
         } else {
-            console.error('No transcript result returned');
+            console.error('❌ DEBUG: No transcript result returned');
             this.transcript = { error: 'Unknown transcript error' };
         }
         
@@ -309,7 +316,7 @@ class YouTubeChatAssistant {
                 };
             } else {
                 const errorData = await response.json();
-                console.warn('❌ youtube-transcript-plus API failed:', errorData);
+                console.warn('youtube-transcript-plus API failed:', errorData);
                 
                 // Handle specific error types
                 if (response.status === 404) {
@@ -323,77 +330,11 @@ class YouTubeChatAssistant {
                 }
                 
                 // Fall back to legacy method for other errors
-
                 return await this.fetchTranscriptFallback();
             }
-            const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-            if (!captionTracks || captionTracks.length === 0) {
-                console.warn('⚠️ No caption tracks found via Innertube API');
-                return await this.fetchTranscriptFallback();
-            }
-
-            console.log('� Found caption tracks:', captionTracks.map(track => ({ lang: track.languageCode, name: track.name?.simpleText })));
-
-            // Step 5: Select appropriate transcript (prefer English)
-            let selectedTrack = captionTracks.find(track => track.languageCode === 'en');
-            if (!selectedTrack) {
-                selectedTrack = captionTracks[0]; // Use first available if no English
-            }
-
-            if (!selectedTrack.baseUrl) {
-                throw new Error('No baseUrl found for selected caption track');
-            }
-
-            // Step 6: Fetch transcript XML
-            const transcriptResponse = await fetch(selectedTrack.baseUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-                }
-            });
-
-            if (!transcriptResponse.ok) {
-                throw new Error(`Transcript fetch failed: ${transcriptResponse.status}`);
-            }
-
-            const transcriptXML = await transcriptResponse.text();
-            
-            // Step 7: Parse XML transcript
-            const xmlParser = new DOMParser();
-            const xmlDoc = xmlParser.parseFromString(transcriptXML, 'text/xml');
-            const textElements = xmlDoc.getElementsByTagName('text');
-
-            if (textElements.length === 0) {
-                throw new Error('No text elements found in transcript XML');
-            }
-
-            // Step 8: Convert to structured format
-            const transcriptData = Array.from(textElements).map(element => ({
-                text: element.textContent.trim(),
-                offset: parseFloat(element.getAttribute('start') || '0'),
-                duration: parseFloat(element.getAttribute('dur') || '0'),
-                lang: selectedTrack.languageCode
-            })).filter(item => item.text);
-
-            // Step 9: Create text version
-            const transcriptText = transcriptData.map(item => item.text).join(' ');
-
-
-
-            return { 
-                data: transcriptText,
-                structured: transcriptData.map(item => ({
-                    text: item.text,
-                    start: item.offset,
-                    duration: item.duration
-                })),
-                language: selectedTrack.languageCode,
-                isGenerated: selectedTrack.kind === 'asr',
-                totalEntries: transcriptData.length
-            };
 
         } catch (error) {
-            console.error('❌ Local server connection failed:', error);
-
+            console.error('Transcript API connection failed:', error);
             return await this.fetchTranscriptFallback();
         }
     }
@@ -497,6 +438,14 @@ class YouTubeChatAssistant {
                 messagesDiv.appendChild(loadingElement);
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 try {
+                    console.log('🔍 DEBUG: Current transcript state:', {
+                        hasTranscript: !!this.transcript,
+                        transcriptData: this.transcript?.data?.substring(0, 200) + '...',
+                        transcriptLength: this.transcript?.data?.length,
+                        hasError: !!this.transcript?.error,
+                        error: this.transcript?.error
+                    });
+
                     const videoData = {
                         transcript: this.transcript?.data || '',
                         metadata: await this.getVideoMetadata(),
@@ -511,6 +460,13 @@ class YouTubeChatAssistant {
                     if (this.transcript?.error) {
                         videoData.transcriptError = this.transcript.error;
                     }
+
+                    console.log('📤 DEBUG: Video data being sent to AI:', {
+                        transcriptLength: videoData.transcript.length,
+                        hasMetadata: !!videoData.metadata,
+                        hasTranscriptError: !!videoData.transcriptError,
+                        transcriptPreview: videoData.transcript.substring(0, 200) + '...'
+                    });
                     
                     const response = await fetch('https://sage-of93.vercel.app/api', {
                         method: 'POST',
