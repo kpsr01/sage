@@ -276,8 +276,21 @@ class YouTubeChatAssistant {
     }
 
     getVideoId() {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('v');
+        // Try standard watch URL first
+        const params = new URLSearchParams(window.location.search);
+        const vParam = params.get('v');
+        if (vParam) return vParam;
+
+        // Handle Shorts: https://www.youtube.com/shorts/<VIDEO_ID>
+        const shortsMatch = window.location.pathname.match(/\/shorts\/([a-zA-Z0-9_-]{5,})/);
+        if (shortsMatch?.[1]) return shortsMatch[1];
+
+        // Handle Embed: https://www.youtube.com/embed/<VIDEO_ID>
+        const embedMatch = window.location.pathname.match(/\/embed\/([a-zA-Z0-9_-]{5,})/);
+        if (embedMatch?.[1]) return embedMatch[1];
+
+        console.warn('⚠️ DEBUG: No videoId found for URL', window.location.href);
+        return null;
     }
 
     async fetchTranscript() {
