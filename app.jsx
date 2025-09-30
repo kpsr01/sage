@@ -216,92 +216,15 @@ class YouTubeChatAssistant {
         if (!videoId) return null;
 
         try {
-            try {
-                const innerTubeResult = await this.fetchTranscriptInnerTube();
-                if (innerTubeResult && innerTubeResult.data) {
-                    return innerTubeResult;
-                }
-            } catch (e) {}
-
-            const transcriptBaseUrl = (typeof ENVIRONMENT !== 'undefined' && ENVIRONMENT.TRANSCRIPT_SERVER_URL)
-                ? `${ENVIRONMENT.TRANSCRIPT_SERVER_URL.replace(/\/$/, '')}/api/transcript`
-                : 'https://sage-serv.vercel.app/api/transcript';
-            const transcriptUrl = new URL(transcriptBaseUrl);
-            transcriptUrl.searchParams.set('videoId', videoId);
-            transcriptUrl.searchParams.set('lang', 'en');
-
-            let response;
-            let errorData;
-
-            try {
-                response = await fetch(transcriptUrl.toString(), {
-                    method: 'GET',
-                    credentials: 'omit'
-                });
-            } catch (getError) {
-                console.warn('Transcript GET request failed, will retry with POST:', getError);
+            const innerTubeResult = await this.fetchTranscriptInnerTube();
+            if (innerTubeResult && innerTubeResult.data) {
+                return innerTubeResult;
             }
-
-            if (!response || response.status === 404 || response.status === 405) {
-                try {
-                    response = await fetch(transcriptBaseUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            videoId: videoId,
-                            config: {
-                                lang: 'en',
-                                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-                            }
-                        })
-                    });
-                } catch (postError) {
-                    console.error('Transcript POST request failed:', postError);
-                    return await this.fetchTranscriptFallback();
-                }
-            }
-
-            if (response && response.ok) {
-                const data = await response.json();
-                
-                return { 
-                    data: data.plainText,
-                    structured: data.transcript,
-                    language: data.metadata.language,
-                    isGenerated: data.metadata.isGenerated,
-                    totalEntries: data.metadata.segmentCount
-                };
-            }
-
-            if (response) {
-                try {
-                    errorData = await response.json();
-                } catch (parseError) {
-                    console.warn('Failed to parse transcript error response:', parseError);
-                }
-            }
-
-            console.warn('youtube-transcript-plus API failed:', errorData);
-
-            if (response) {
-                if (response.status === 404) {
-                    return { error: errorData?.error || 'No transcript available for this video' };
-                } else if (response.status === 403) {
-                    return { error: errorData?.error || 'Transcripts are disabled for this video' };
-                } else if (response.status === 429) {
-                    return { error: errorData?.error || 'Too many requests. Please try again later' };
-                } else if (response.status === 400) {
-                    return { error: errorData?.error || 'Invalid video ID' };
-                }
-            }
-
-            return await this.fetchTranscriptFallback();
+            return null;
 
         } catch (error) {
             console.error('Transcript API connection failed:', error);
-            return await this.fetchTranscriptFallback();
+            return null;
         }
     }
 
@@ -355,53 +278,7 @@ class YouTubeChatAssistant {
         };
     }
 
-    // FALLBACK METHOD: Legacy HTML scraping method (kept as backup)
-    async fetchTranscriptFallback() {
-        const videoId = this.getVideoId();
-        if (!videoId) return null;
-
-        try {
-            const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
-            const html = await response.text();
-            
-            const captionsMatch = html.match(/"captionTracks":\[(.*?)\]/);
-            if (!captionsMatch) {
-                return { error: 'No transcript available for this video. Please try another video.' };
-            }
-
-            const captions = JSON.parse(`[${captionsMatch[1]}]`);
-            
-            let selectedCaptions = captions.find(caption => caption.languageCode === 'en');
-            
-            if (!selectedCaptions && captions.length > 0) {
-                selectedCaptions = captions[0];
-            }
-
-            if (!selectedCaptions?.baseUrl) {
-                return { error: 'No transcript available for this video.' };
-            }
-            const transcriptResponse = await fetch(selectedCaptions.baseUrl);
-            const transcriptText = await transcriptResponse.text();
-            
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(transcriptText, 'text/xml');
-            const textElements = doc.getElementsByTagName('text');
-            
-            const transcript = Array.from(textElements)
-                .map(text => text.textContent.trim())
-                .filter(text => text)
-                .join('\n');
-            
-            return { 
-                data: transcript,
-                language: selectedCaptions.languageCode,
-                isGenerated: selectedCaptions.kind === 'asr'
-            };
-        } catch (error) {
-            console.error('Fallback transcript method failed:', error);
-            return { error: 'Failed to fetch transcript. Please try again.' };
-        }
-    }
+    
 
     createChatInterface() {
         const template = `
