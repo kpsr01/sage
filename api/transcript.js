@@ -1,6 +1,6 @@
-const { fetchTranscript } = require('youtube-transcript-plus');
-
 module.exports = async function handler(req, res) {
+  // Dynamic import for ES module
+  const { fetchTranscript } = await import('youtube-transcript-plus');
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');

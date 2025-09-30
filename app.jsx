@@ -128,18 +128,11 @@ class YouTubeChatAssistant {
         
         if (transcriptResult && !transcriptResult.error) {
             this.transcript = transcriptResult;
-            console.log('✅ DEBUG: Transcript successfully fetched:', {
-                dataLength: transcriptResult.data?.length,
-                language: transcriptResult.language,
-                isGenerated: transcriptResult.isGenerated,
-                totalEntries: transcriptResult.totalEntries,
-                preview: transcriptResult.data?.substring(0, 200) + '...'
-            });
         } else if (transcriptResult?.error) {
-            console.warn('⚠️ DEBUG: Transcript error occurred:', transcriptResult.error);
+            console.warn('Transcript error occurred:', transcriptResult.error);
             this.transcript = { error: transcriptResult.error };
         } else {
-            console.error('❌ DEBUG: No transcript result returned');
+            console.error('No transcript result returned');
             this.transcript = { error: 'Unknown transcript error' };
         }
         
@@ -289,7 +282,7 @@ class YouTubeChatAssistant {
         if (!videoId) return null;
 
         try {
-            // Call our production server that uses youtube-transcript-plus
+            // Call our production server that uses youtube-transcript-plus (fixed ES module import)
             const response = await fetch('https://sage-of93.vercel.app/api/transcript', {
                 method: 'POST',
                 headers: {
@@ -438,14 +431,6 @@ class YouTubeChatAssistant {
                 messagesDiv.appendChild(loadingElement);
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 try {
-                    console.log('🔍 DEBUG: Current transcript state:', {
-                        hasTranscript: !!this.transcript,
-                        transcriptData: this.transcript?.data?.substring(0, 200) + '...',
-                        transcriptLength: this.transcript?.data?.length,
-                        hasError: !!this.transcript?.error,
-                        error: this.transcript?.error
-                    });
-
                     const videoData = {
                         transcript: this.transcript?.data || '',
                         metadata: await this.getVideoMetadata(),
@@ -460,13 +445,6 @@ class YouTubeChatAssistant {
                     if (this.transcript?.error) {
                         videoData.transcriptError = this.transcript.error;
                     }
-
-                    console.log('📤 DEBUG: Video data being sent to AI:', {
-                        transcriptLength: videoData.transcript.length,
-                        hasMetadata: !!videoData.metadata,
-                        hasTranscriptError: !!videoData.transcriptError,
-                        transcriptPreview: videoData.transcript.substring(0, 200) + '...'
-                    });
                     
                     const response = await fetch('https://sage-of93.vercel.app/api', {
                         method: 'POST',
