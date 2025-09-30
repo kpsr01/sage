@@ -282,6 +282,7 @@ class YouTubeChatAssistant {
         if (!videoId) return null;
 
         try {
+            console.log('🚀 Attempting to fetch transcript for video:', videoId);
             // Call our dedicated transcript server (separate Vercel deployment)
             const response = await fetch('https://sage-server.vercel.app/api/transcript', {
                 method: 'POST',
@@ -296,6 +297,7 @@ class YouTubeChatAssistant {
                     }
                 })
             });
+            console.log('📡 Transcript API response status:', response.status);
 
             if (response.ok) {
                 const data = await response.json();
@@ -327,7 +329,12 @@ class YouTubeChatAssistant {
             }
 
         } catch (error) {
-            console.error('Transcript API connection failed:', error);
+            console.error('❌ Transcript API connection failed:', error);
+            console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack?.substring(0, 200)
+            });
             return await this.fetchTranscriptFallback();
         }
     }
