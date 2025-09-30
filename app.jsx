@@ -300,23 +300,20 @@ class YouTubeChatAssistant {
 
         try {
             // Call our dedicated transcript server
-            console.log('🌐 DEBUG: Making request to transcript server...');
-            const response = await fetch('https://sage-server.vercel.app/api/transcript', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    videoId: videoId,
+            console.log('🌐 DEBUG: Requesting transcript via background proxy...');
+            const proxyResp = await chrome.runtime.sendMessage({
+                type: 'FETCH_TRANSCRIPT',
+                payload: {
+                    videoId,
                     config: {
-                        lang: 'en', // Prefer English
+                        lang: 'en',
                         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
                     }
-                })
+                }
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            if (proxyResp?.ok) {
+                const data = proxyResp.data;
                 console.log('✅ DEBUG: Transcript fetched successfully, length:', data.plainText?.length);
                 
                 return { 
@@ -327,17 +324,18 @@ class YouTubeChatAssistant {
                     totalEntries: data.metadata.segmentCount
                 };
             } else {
-                const errorData = await response.json();
-                console.warn('❌ DEBUG: Transcript API failed:', response.status, errorData);
+                const status = proxyResp?.status;
+                const errorData = proxyResp?.data || proxyResp?.error || {};
+                console.warn('❌ DEBUG: Transcript API failed via proxy:', status, errorData);
                 
                 // Handle specific error types
-                if (response.status === 404) {
+                if (status === 404) {
                     return { error: errorData.error || 'No transcript available for this video' };
-                } else if (response.status === 403) {
+                } else if (status === 403) {
                     return { error: errorData.error || 'Transcripts are disabled for this video' };
-                } else if (response.status === 429) {
+                } else if (status === 429) {
                     return { error: errorData.error || 'Too many requests. Please try again later' };
-                } else if (response.status === 400) {
+                } else if (status === 400) {
                     return { error: errorData.error || 'Invalid video ID' };
                 }
                 
