@@ -536,29 +536,7 @@
 }
 
 /* Transcript display styles */
-.transcript-bubble {
-    background-color: #f0f7ff !important;
-    border: 1px solid #e1f5fe !important;
-    border-radius: 8px !important;
-    padding: 12px !important;
-    margin-bottom: 12px !important;
-}
-
-.yt-extension-sidebar.dark-mode .transcript-bubble {
-    background-color: #1a1a2e !important;
-    border: 1px solid #16213e !important;
-    color: #ffffff !important;
-}
-
-.transcript-bubble strong {
-    color: #065fd4;
-    display: block;
-    margin-bottom: 8px;
-}
-
-.yt-extension-sidebar.dark-mode .transcript-bubble strong {
-    color: #3ea6ff !important;
-}
+/* removed transcript styles */
 
 .error-bubble {
     background-color: #fff3f3 !important;

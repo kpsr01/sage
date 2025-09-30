@@ -174,76 +174,10 @@ class YouTubeChatAssistant {
         
         if (messagesDiv) {
             messagesDiv.innerHTML = '';
-            
-            // Display transcript instead of welcome message
-            if (this.transcript) {
-                if (this.transcript.error) {
-                    // Show error message if transcript failed
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'ai-bubble error-bubble';
-                    errorMsg.textContent = `Transcript Error: ${this.transcript.error}`;
-                    messagesDiv.appendChild(errorMsg);
-                    
-                    const fallbackMsg = document.createElement('div');
-                    fallbackMsg.className = 'ai-bubble welcome-bubble';
-                    fallbackMsg.textContent = 'Ask me anything about this video based on its title and description...';
-                    messagesDiv.appendChild(fallbackMsg);
-                } else if (this.transcript.data) {
-                    // Show transcript data
-                    const transcriptMsg = document.createElement('div');
-                    transcriptMsg.className = 'ai-bubble transcript-bubble';
-                    transcriptMsg.style.maxHeight = '200px';
-                    transcriptMsg.style.overflowY = 'auto';
-                    transcriptMsg.style.fontSize = '12px';
-                    transcriptMsg.style.lineHeight = '1.3';
-                    transcriptMsg.style.whiteSpace = 'pre-wrap';
-                    transcriptMsg.style.wordBreak = 'break-word';
-                    
-                    // Show first 500 characters with option to expand
-                    const shortTranscript = this.transcript.data.substring(0, 500);
-                    const hasMore = this.transcript.data.length > 500;
-                    
-                    transcriptMsg.innerHTML = `
-                        <strong>📄 Video Transcript:</strong><br/>
-                        <div style="margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.05); border-radius: 4px;">
-                            <span id="transcriptContent">${shortTranscript}${hasMore ? '...' : ''}</span>
-                            ${hasMore ? '<br/><button id="expandTranscript" style="margin-top: 8px; padding: 4px 8px; border: none; background: #065fd4; color: white; border-radius: 4px; cursor: pointer; font-size: 11px;">Show Full Transcript</button>' : ''}
-                        </div>
-                        <div style="margin-top: 8px; font-size: 11px; color: #666;">
-                            Language: ${this.transcript.language || 'Unknown'} | 
-                            Type: ${this.transcript.isGenerated ? 'Auto-generated' : 'Manual'} | 
-                            Segments: ${this.transcript.totalEntries || 0}
-                        </div>
-                    `;
-                    messagesDiv.appendChild(transcriptMsg);
-                    
-                    // Handle expand button
-                    if (hasMore) {
-                        const expandBtn = transcriptMsg.querySelector('#expandTranscript');
-                        if (expandBtn) {
-                            expandBtn.addEventListener('click', () => {
-                                const contentSpan = transcriptMsg.querySelector('#transcriptContent');
-                                if (contentSpan) {
-                                    contentSpan.textContent = this.transcript.data;
-                                    expandBtn.style.display = 'none';
-                                }
-                            });
-                        }
-                    }
-                } else {
-                    // Fallback if no transcript data
-                    const welcomeMsg = document.createElement('div');
-                    welcomeMsg.className = 'ai-bubble welcome-bubble';
-                    welcomeMsg.textContent = 'Welcome! Ask me anything about this video...';
-                    messagesDiv.appendChild(welcomeMsg);
-                }
-            } else {
-                // Default welcome message if transcript is not loaded yet
-                const welcomeMsg = document.createElement('div');
-                welcomeMsg.className = 'ai-bubble welcome-bubble';
-                welcomeMsg.textContent = 'Welcome! Ask me anything about this video...';
-                messagesDiv.appendChild(welcomeMsg);
-            }
+            const welcomeMsg = document.createElement('div');
+            welcomeMsg.className = 'ai-bubble welcome-bubble';
+            welcomeMsg.textContent = 'Welcome! Ask me anything about this video...';
+            messagesDiv.appendChild(welcomeMsg);
             
             const summarizeBtn = document.createElement('button');
             summarizeBtn.className = 'summarize-float-button';
@@ -282,6 +216,13 @@ class YouTubeChatAssistant {
         if (!videoId) return null;
 
         try {
+            try {
+                const innerTubeResult = await this.fetchTranscriptInnerTube();
+                if (innerTubeResult && innerTubeResult.data) {
+                    return innerTubeResult;
+                }
+            } catch (e) {}
+
             const transcriptBaseUrl = (typeof ENVIRONMENT !== 'undefined' && ENVIRONMENT.TRANSCRIPT_SERVER_URL)
                 ? `${ENVIRONMENT.TRANSCRIPT_SERVER_URL.replace(/\/$/, '')}/api/transcript`
                 : 'https://sage-serv.vercel.app/api/transcript';
@@ -365,6 +306,54 @@ class YouTubeChatAssistant {
     }
 
 
+
+    async fetchTranscriptInnerTube() {
+        const videoId = this.getVideoId();
+        if (!videoId) return null;
+        const url = 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false';
+        const body = {
+            videoId: videoId,
+            context: {
+                client: {
+                    clientName: 'WEB',
+                    clientVersion: '2.20250101.00.00',
+                    hl: 'en',
+                    gl: 'US',
+                    utcOffsetMinutes: 0
+                }
+            }
+        };
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-YouTube-Client-Name': '1',
+                'X-YouTube-Client-Version': body.context.client.clientVersion
+            },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) return { error: 'Failed to fetch player data' };
+        const data = await res.json();
+        const tracks = data && data.captions && data.captions.playerCaptionsTracklistRenderer && data.captions.playerCaptionsTracklistRenderer.captionTracks;
+        if (!Array.isArray(tracks) || tracks.length === 0) return { error: 'No transcript available for this video' };
+        let selected = tracks.find(t => t.languageCode === 'en') || tracks[0];
+        if (!selected || !selected.baseUrl) return { error: 'No transcript available for this video' };
+        const tt = await fetch(selected.baseUrl);
+        if (!tt.ok) return { error: 'Failed to fetch transcript data' };
+        const xml = await tt.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xml, 'text/xml');
+        const items = Array.from(doc.getElementsByTagName('text'));
+        const texts = items.map(x => x.textContent.trim()).filter(Boolean);
+        if (texts.length === 0) return { error: 'No transcript available for this video' };
+        const transcript = texts.join('\n');
+        return {
+            data: transcript,
+            language: selected.languageCode,
+            isGenerated: selected.kind === 'asr',
+            totalEntries: texts.length
+        };
+    }
 
     // FALLBACK METHOD: Legacy HTML scraping method (kept as backup)
     async fetchTranscriptFallback() {
