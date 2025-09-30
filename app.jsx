@@ -282,7 +282,9 @@ class YouTubeChatAssistant {
         if (!videoId) return null;
 
         try {
-            const transcriptBaseUrl = 'https://sage-serv.vercel.app/api/transcript';
+            const transcriptBaseUrl = (typeof ENVIRONMENT !== 'undefined' && ENVIRONMENT.TRANSCRIPT_SERVER_URL)
+                ? `${ENVIRONMENT.TRANSCRIPT_SERVER_URL.replace(/\/$/, '')}/api/transcript`
+                : 'https://sage-serv.vercel.app/api/transcript';
             const transcriptUrl = new URL(transcriptBaseUrl);
             transcriptUrl.searchParams.set('videoId', videoId);
             transcriptUrl.searchParams.set('lang', 'en');
