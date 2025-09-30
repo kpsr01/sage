@@ -106,8 +106,10 @@ class YouTubeChatAssistant {
 
         const observer = new MutationObserver(() => {
             if (location.href !== lastUrl) {
+                console.log('🔄 DEBUG: URL changed from', lastUrl.substring(0, 100), 'to', location.href.substring(0, 100));
                 lastUrl = location.href;
                 setTimeout(() => {
+                    console.log('⏰ DEBUG: Triggering transcript update after URL change...');
                     this.updateTranscript();
                 }, 1000);
             }
@@ -117,6 +119,7 @@ class YouTubeChatAssistant {
     }
 
     async updateTranscript() {
+        console.log('🚀 DEBUG: updateTranscript called for video:', this.getVideoId());
         this.isLoading = true;
         this.updateUIForLoadingState();
         
@@ -279,10 +282,12 @@ class YouTubeChatAssistant {
 
     async fetchTranscript() {
         const videoId = this.getVideoId();
+        console.log('📥 DEBUG: fetchTranscript called for videoId:', videoId);
         if (!videoId) return null;
 
         try {
             // Call our dedicated transcript server
+            console.log('🌐 DEBUG: Making request to transcript server...');
             const response = await fetch('https://sage-server.vercel.app/api/transcript', {
                 method: 'POST',
                 headers: {
@@ -299,6 +304,7 @@ class YouTubeChatAssistant {
 
             if (response.ok) {
                 const data = await response.json();
+                console.log('✅ DEBUG: Transcript fetched successfully, length:', data.plainText?.length);
                 
                 return { 
                     data: data.plainText,
@@ -309,7 +315,7 @@ class YouTubeChatAssistant {
                 };
             } else {
                 const errorData = await response.json();
-                console.warn('youtube-transcript-plus API failed:', errorData);
+                console.warn('❌ DEBUG: Transcript API failed:', response.status, errorData);
                 
                 // Handle specific error types
                 if (response.status === 404) {
@@ -327,7 +333,7 @@ class YouTubeChatAssistant {
             }
 
         } catch (error) {
-            console.error('Transcript API connection failed:', error);
+            console.error('❌ DEBUG: Transcript API connection failed:', error);
             return await this.fetchTranscriptFallback();
         }
     }
