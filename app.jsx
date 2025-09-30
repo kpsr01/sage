@@ -277,120 +277,15 @@ class YouTubeChatAssistant {
         return urlParams.get('v');
     }
 
-    getExtensionRuntime() {
-        if (typeof chrome !== 'undefined' && chrome?.runtime) {
-            return chrome.runtime;
-        }
-
-        if (typeof browser !== 'undefined' && browser?.runtime) {
-            return browser.runtime;
-        }
-
-        return null;
-    }
-
-    async sendRuntimeMessage(runtime, payload) {
-        return await new Promise((resolve, reject) => {
-            let callbackResolved = false;
-
-            const callback = (response) => {
-                if (callbackResolved) return;
-                callbackResolved = true;
-
-                const lastError = runtime?.lastError;
-                if (lastError) {
-                    reject(new Error(lastError.message || 'Runtime message failed'));
-                    return;
-                }
-
-                resolve(response);
-            };
-
-            let sendResult;
-            try {
-                sendResult = runtime.sendMessage(payload, callback);
-            } catch (error) {
-                reject(error);
-                return;
-            }
-
-            if (sendResult && typeof sendResult.then === 'function') {
-                sendResult
-                    .then((response) => {
-                        if (!callbackResolved) {
-                            callbackResolved = true;
-                            resolve(response);
-                        }
-                    })
-                    .catch((error) => {
-                        if (!callbackResolved) {
-                            callbackResolved = true;
-                            reject(error);
-                        }
-                    });
-            }
-        });
-    }
-
     async fetchTranscript() {
         const videoId = this.getVideoId();
         if (!videoId) return null;
 
-        const runtimeResult = await this.fetchTranscriptViaExtension(videoId, 'en');
-        if (runtimeResult) {
-            return runtimeResult;
-        }
-
-        return await this.fetchTranscriptDirect(videoId, 'en');
-    }
-
-    async fetchTranscriptViaExtension(videoId, lang = 'en') {
-        const runtime = this.getExtensionRuntime();
-        if (!runtime || !runtime.id) {
-            return null;
-        }
-
-        try {
-            const response = await this.sendRuntimeMessage(runtime, {
-                type: 'FETCH_TRANSCRIPT',
-                videoId,
-                lang
-            });
-
-            if (!response) {
-                return null;
-            }
-
-            if (response.fallback) {
-                return null;
-            }
-
-            if (response.error) {
-                return { error: response.error };
-            }
-
-            if (response.data) {
-                return {
-                    data: response.data,
-                    structured: response.structured,
-                    language: response.language,
-                    isGenerated: response.isGenerated,
-                    totalEntries: response.totalEntries
-                };
-            }
-        } catch (error) {
-            console.warn('Runtime transcript fetch failed:', error);
-        }
-
-        return null;
-    }
-
-    async fetchTranscriptDirect(videoId, lang = 'en') {
         try {
             const transcriptBaseUrl = 'https://sage-serv.vercel.app/api/transcript';
             const transcriptUrl = new URL(transcriptBaseUrl);
             transcriptUrl.searchParams.set('videoId', videoId);
-            transcriptUrl.searchParams.set('lang', lang);
+            transcriptUrl.searchParams.set('lang', 'en');
 
             let response;
             let errorData;
@@ -412,9 +307,9 @@ class YouTubeChatAssistant {
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            videoId,
+                            videoId: videoId,
                             config: {
-                                lang,
+                                lang: 'en',
                                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
                             }
                         })
@@ -427,8 +322,8 @@ class YouTubeChatAssistant {
 
             if (response && response.ok) {
                 const data = await response.json();
-
-                return {
+                
+                return { 
                     data: data.plainText,
                     structured: data.transcript,
                     language: data.metadata.language,
@@ -466,6 +361,8 @@ class YouTubeChatAssistant {
             return await this.fetchTranscriptFallback();
         }
     }
+
+
 
     // FALLBACK METHOD: Legacy HTML scraping method (kept as backup)
     async fetchTranscriptFallback() {
