@@ -12,8 +12,12 @@
         "storage"
     ],
     "host_permissions": [
-        "http://localhost:5001/"
+        "http://localhost:5001/",
+        "https://sage-serv.vercel.app/*"
     ],
+    "background": {
+        "service_worker": "background.js"
+    },
     "content_scripts": [
         {
             "matches": [
